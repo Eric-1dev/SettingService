@@ -116,9 +116,6 @@ const menuOptions = ref<MenuOption[]>([
                                 query: {
                                     appName: "appName1",
                                 },
-                                params: {
-                                    appName: "appName1",
-                                },
                             },
                         },
                         { default: () => "AppName1" }

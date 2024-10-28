@@ -29,8 +29,8 @@
       "commandName": "Docker",
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}/swagger",
       "environmentVariables": {
-        "ASPNETCORE_HTTPS_PORTS": "8081",
-        "ASPNETCORE_HTTP_PORTS": "8080"
+        "ASPNETCORE_HTTPS_PORTS": "8801",
+        "ASPNETCORE_HTTP_PORTS": "8800"
       },
       "publishAllPorts": true,
       "useSSL": true
