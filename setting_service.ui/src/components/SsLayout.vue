@@ -7,13 +7,20 @@
                     <n-h2>Сервис настроек</n-h2>
                     <n-space :justify="'end'" :align="'center'">
                         <n-button @click="toggleTheme">
-                            {{ isDarkTheme ? 'Светлая тема' : 'Тёмная тема' }}
+                            {{ isDarkTheme ? "Светлая тема" : "Тёмная тема" }}
                         </n-button>
                     </n-space>
                 </n-space>
             </n-layout-header>
-            <n-layout has-sider position="absolute" style="top: 48px;">
-                <n-layout-sider bordered>
+            <n-layout has-sider position="absolute" style="top: 48px">
+                <n-layout-sider
+                    bordered
+                    collapse-mode="width"
+                    :collapsed="collapsed"
+                    show-trigger
+                    @collapse="collapsed = true"
+                    @expand="collapsed = false"
+                >
                     <n-menu :options="menuOptions"></n-menu>
                 </n-layout-sider>
                 <n-layout-content>
@@ -25,89 +32,117 @@
 </template>
 
 <script setup lang="ts">
-import { NLayout, NButton, NConfigProvider, darkTheme, lightTheme, NLayoutHeader, NText, NMenu, MenuOption, NGrid, NGridItem, NSpace, NLayoutSider, NLayoutContent, NH2 } from 'naive-ui'
-import { ref, h } from 'vue';
-import { RouterLink } from 'vue-router';
+import {
+    NLayout,
+    NButton,
+    NConfigProvider,
+    darkTheme,
+    lightTheme,
+    NLayoutHeader,
+    NMenu,
+    MenuOption,
+    NSpace,
+    NLayoutSider,
+    NLayoutContent,
+    NH2,
+} from "naive-ui";
+import { ref, h } from "vue";
+import { RouterLink } from "vue-router";
 
-const isDarkTheme = ref<boolean>(localStorage.isDarkTheme === 'true')
+const isDarkTheme = ref<boolean>(localStorage.isDarkTheme === "true");
+const collapsed = ref(false);
 
 const toggleTheme = (): void => {
-    isDarkTheme.value = !isDarkTheme.value
-    localStorage.isDarkTheme = isDarkTheme.value
-}
+    isDarkTheme.value = !isDarkTheme.value;
+    localStorage.isDarkTheme = isDarkTheme.value;
+};
 
 const menuOptions = ref<MenuOption[]>([
     {
         label: () =>
-            h(RouterLink,
+            h(
+                RouterLink,
                 {
-                    to: { name: 'home-page' }
+                    to: { name: "home-page" },
                 },
-                { default: () => 'Домашняя страница' }
+                { default: () => "Домашняя страница" }
             ),
-        key: 'home',
+        key: "home",
     },
     {
-        key: 'home-divider',
-        type: 'divider',
+        key: "home-divider",
+        type: "divider",
         props: {
             style: {
-                marginLeft: '32px'
-            }
-        }
+                marginLeft: "32px",
+            },
+        },
     },
     {
         label: () =>
-            h(RouterLink,
+            h(
+                RouterLink,
                 {
-                    to: { name: 'settings-page' }
+                    to: { name: "settings-page" },
                 },
-                { default: () => 'Настройки' }
+                { default: () => "Настройки" }
             ),
-        key: 'settings',
+        key: "settings",
     },
     {
-        label: () =>
-            h(RouterLink,
-                {
-                    to: { name: 'applications-page' }
-                },
-                { default: () => 'Приложения' }
-            ),
-        key: 'applications',
+        label: "Приложения",
+        key: "applications",
         children: [
             {
                 label: () =>
-                    h(RouterLink,
+                    h(
+                        RouterLink,
                         {
                             to: {
-                                name: 'applications-page',
-                                params: {
-                                    appName: 'appName1'
-                                }
+                                name: "applications-page",
                             },
                         },
-                        { default: () => 'AppName1' }
+                        { default: () => "Управление приложениями" }
                     ),
-                key: 'narrator',
+                key: "manage-applications",
             },
             {
-                label: 'Sheep Man',
-                key: 'sheep-man',
-            }
-        ]
+                label: () =>
+                    h(
+                        RouterLink,
+                        {
+                            to: {
+                                name: "applications-page",
+                                query: {
+                                    appName: "appName1",
+                                },
+                                params: {
+                                    appName: "appName1",
+                                },
+                            },
+                        },
+                        { default: () => "AppName1" }
+                    ),
+                key: "app-name-1",
+            },
+            {
+                label: "Sheep Man",
+                key: "sheep-man",
+            },
+        ],
     },
     {
         label: () =>
-            h(RouterLink,
+            h(
+                RouterLink,
                 {
-                    to: { name: 'users-page' }
+                    to: { name: "users-page" },
                 },
-                { default: () => 'Пользователи' }
+                { default: () => "Пользователи" }
             ),
-        key: 'users',
-    }
-])
+        key: "users",
+    },
+]);
 </script>
 
 <style>

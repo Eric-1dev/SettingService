@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SettingService.Entities;
+using SettingService.DataModel;
 
 namespace SettingService.DataLayer;
 
@@ -18,6 +18,6 @@ public class SettingsContext : DbContext
     {
         base.OnConfiguring(optionsBuilder);
 
-        optionsBuilder.UseSqlite("C:/Work/SettingService/DataBase/SettingService.db");
+        optionsBuilder.UseSqlite("Data Source=C:/Work/SettingService/Database/SettingService.db");
     }
 }

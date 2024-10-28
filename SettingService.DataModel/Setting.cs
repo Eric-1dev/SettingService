@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SettingService.Entities;
+namespace SettingService.DataModel;
 
 public class Setting : IdentityEntity
 {

@@ -1,4 +1,5 @@
 using SettingService.DataLayer;
+using SettingService.Services;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddDbContextFactory<SettingsContext>();
+
+builder.Services.AddCommonServices();
 
 var app = builder.Build();
 

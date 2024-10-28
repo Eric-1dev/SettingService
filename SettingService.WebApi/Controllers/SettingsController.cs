@@ -1,12 +1,26 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SettingService.Contracts;
+using SettingService.Services.Interfaces;
 
 namespace SettingService.WebApi.Controllers;
 
+/// <summary>
+/// Контроллер для управлением настройками
+/// </summary>
 [Route("api/[controller]/[action]")]
 [ApiController]
-public class SettingsController : ControllerBase
+public class SettingsController : ApiСontrollerBase
 {
+    private readonly ISettingsService _settingsService;
+
+    /// <summary>
+    /// Конструктор
+    /// </summary>
+    public SettingsController(ISettingsService settingsService)
+    {
+        _settingsService = settingsService;
+    }
+
     /// <summary>
     /// Получить все настройки для приложения
     /// </summary>

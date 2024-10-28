@@ -17,7 +17,7 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\SettingService.Contracts\SettingService.Contracts.csproj" />
-	  <ProjectReference Include="..\SettingService.DataLayer\SettingService.DataLayer.csproj" />
+	  <ProjectReference Include="..\SettingService.Services\SettingService.Services.csproj" />
 	</ItemGroup>
 
 </Project>
