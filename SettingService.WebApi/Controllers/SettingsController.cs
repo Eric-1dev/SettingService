@@ -9,7 +9,7 @@ namespace SettingService.WebApi.Controllers;
 /// </summary>
 [Route("api/[controller]/[action]")]
 [ApiController]
-public class SettingsController : ApiСontrollerBase
+public class SettingsController : ControllerBase
 {
     private readonly ISettingsService _settingsService;
 
@@ -32,7 +32,7 @@ public class SettingsController : ApiСontrollerBase
     {
         var settings = new SettingItem[]
         {
-            new("Setting1", SettingTypeEnum.String, "lalala"),
+            new("Setting1", SettingTypeEnum.String, "lalala", "что-то непонятное"),
             new("Setting2", SettingTypeEnum.Int, "1")
         };
 
@@ -49,7 +49,7 @@ public class SettingsController : ApiСontrollerBase
     [ProducesResponseType<SettingItem>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSettingByName(string applcationName, string settingName)
     {
-        var setting = new SettingItem("Setting1", SettingTypeEnum.String, "lalala");
+        var setting = new SettingItem("Setting1", SettingTypeEnum.String, "lalala", "что-то непонятное");
 
         return await Task.FromResult(Ok(setting));
     }

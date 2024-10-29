@@ -16,10 +16,20 @@ public class SettingItem
         Value = value;
     }
 
+    public SettingItem(string name, SettingTypeEnum type, string value, string description) : this(name, type, value)
+    {
+        Description = description;
+    }
+
     /// <summary>
     /// Название настройки
     /// </summary>
     public string Name { get; set; }
+
+    /// <summary>
+    /// Описание настройки
+    /// </summary>
+    public string? Description { get; set; }
     
     /// <summary>
     /// Значение настройки

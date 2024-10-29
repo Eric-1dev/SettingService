@@ -15,7 +15,6 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddDbContextFactory<SettingsContext>();
-
 builder.Services.AddCommonServices();
 
 var app = builder.Build();

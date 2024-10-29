@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using SettingService.Contracts;
 using SettingService.Services.Interfaces;
 using SettingService.Services.Models;
 
@@ -9,7 +10,7 @@ namespace SettingService.WebApi.Controllers;
 /// </summary>
 [Route("api/[controller]/[action]")]
 [ApiController]
-public class ApplicationsController : ApiСontrollerBase
+public class ApplicationsController : ControllerBase
 {
     private readonly IApplicationsService _applicationsService;
 
@@ -26,29 +27,32 @@ public class ApplicationsController : ApiСontrollerBase
     /// </summary>
     /// <returns></returns>
     [HttpGet]
-    public async Task<JsonResult> GetAllApplications()
+    [ProducesResponseType<ICollection<ApplicationForList>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<string>(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetAllApplications()
     {
         var result = await _applicationsService.GetAllApplications();
 
         if (result.IsSuccess)
-            return Success(result.Entity);
+            return Ok(result.Entity);
 
-        return Fail(result.Message);
+        return StatusCode(StatusCodes.Status500InternalServerError, result.Message);
     }
 
     /// <summary>
     /// Добавить новое приложение.
     /// </summary>
-    /// <param name="name"></param>
     /// <returns></returns>
     [HttpPost]
-    public async Task<JsonResult> AddApplication(string name)
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType<string>(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> AddApplication(ApplicationForList app)
     {
-        var result = await _applicationsService.AddApplication(new ApplicationForList { Name = name });
+        var result = await _applicationsService.AddApplication(new ApplicationForList { Name = app.Name, Description = app.Description });
 
         if (result.IsSuccess)
-            return Success();
+            return Ok();
 
-        return Fail(result.Message);
+        return StatusCode(StatusCodes.Status500InternalServerError, result.Message);
     }
 }
