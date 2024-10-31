@@ -26,7 +26,7 @@ internal class ApplicationsService : IApplicationsService
             using var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
             var apps = await dbContext.Applications
-                .Select(x => new ApplicationForList { Name = x.Name, Description = x.Description })
+                .Select(x => new ApplicationForList { Id = x.Id, Name = x.Name, Description = x.Description })
                 .ToArrayAsync();
 
             return OperationResult<IReadOnlyCollection<ApplicationForList>>.Success(apps);

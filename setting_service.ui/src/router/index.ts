@@ -9,26 +9,31 @@ const routes: Array<RouteRecordRaw> = [
     {
         path: "/",
         name: "home-page",
+        meta: { pageName: "Домашняя страница" },
         component: HomePage,
     },
     {
         path: "/settings",
         name: "settings-page",
+        meta: { pageName: "Настройки" },
         component: SettingsPage,
     },
     {
         path: "/applications",
-        name: "applications-page",
+        name: "applications-manage-page",
+        meta: { pageName: "Приложения" },
         component: ApplicationsManagePage,
     },
     {
         path: "/users",
         name: "users-page",
+        meta: { pageName: "Пользователи" },
         component: UsersPage,
     },
     {
         path: "/login",
         name: "login",
+        meta: { pageName: "Авторизация" },
         component: LoginPage,
     },
 

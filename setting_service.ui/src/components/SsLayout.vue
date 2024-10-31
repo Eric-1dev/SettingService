@@ -3,7 +3,6 @@
         <n-layout :position="'absolute'" has-sider>
             <n-layout-header bordered>
                 <n-space :justify="'space-between'" :align="'center'">
-                    <div></div>
                     <n-h2>Сервис настроек</n-h2>
                     <n-space :justify="'end'" :align="'center'">
                         <n-button @click="toggleTheme">
@@ -13,17 +12,12 @@
                 </n-space>
             </n-layout-header>
             <n-layout has-sider position="absolute" style="top: 48px">
-                <n-layout-sider
-                    bordered
-                    collapse-mode="width"
-                    :collapsed="collapsed"
-                    show-trigger
-                    @collapse="collapsed = true"
-                    @expand="collapsed = false"
-                >
+                <n-layout-sider bordered collapse-mode="width" :collapsed="collapsed" show-trigger
+                    @collapse="collapsed = true" @expand="collapsed = false">
                     <n-menu :options="menuOptions"></n-menu>
                 </n-layout-sider>
                 <n-layout-content>
+                    <n-space :justify="'center'" :align="'center'"><n-h2>{{ props.pageName }}</n-h2></n-space>
                     <slot></slot>
                 </n-layout-content>
             </n-layout>
@@ -32,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+
 import {
     NLayout,
     NButton,
@@ -46,8 +41,12 @@ import {
     NLayoutContent,
     NH2,
 } from "naive-ui";
-import { ref, h } from "vue";
+import { ref, h, computed } from "vue";
 import { RouterLink } from "vue-router";
+
+interface Props {
+    pageName: string
+}
 
 const isDarkTheme = ref<boolean>(localStorage.isDarkTheme === "true");
 const collapsed = ref(false);
@@ -57,7 +56,9 @@ const toggleTheme = (): void => {
     localStorage.isDarkTheme = isDarkTheme.value;
 };
 
-const menuOptions = ref<MenuOption[]>([
+const props = defineProps<Props>()
+
+const menuOptions = computed<MenuOption[]>(() => [
     {
         label: () =>
             h(
@@ -90,43 +91,15 @@ const menuOptions = ref<MenuOption[]>([
         key: "settings",
     },
     {
-        label: "Приложения",
+        label: () =>
+            h(
+                RouterLink,
+                {
+                    to: { name: "applications-manage-page" },
+                },
+                { default: () => "Приложения" }
+            ),
         key: "applications",
-        children: [
-            {
-                label: () =>
-                    h(
-                        RouterLink,
-                        {
-                            to: {
-                                name: "applications-page",
-                            },
-                        },
-                        { default: () => "Управление приложениями" }
-                    ),
-                key: "manage-applications",
-            },
-            {
-                label: () =>
-                    h(
-                        RouterLink,
-                        {
-                            to: {
-                                name: "applications-page",
-                                query: {
-                                    appName: "appName1",
-                                },
-                            },
-                        },
-                        { default: () => "AppName1" }
-                    ),
-                key: "app-name-1",
-            },
-            {
-                label: "Sheep Man",
-                key: "sheep-man",
-            },
-        ],
     },
     {
         label: () =>
@@ -141,6 +114,7 @@ const menuOptions = ref<MenuOption[]>([
     },
 ]);
 </script>
+
 
 <style>
 * {
