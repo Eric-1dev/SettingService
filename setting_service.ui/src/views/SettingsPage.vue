@@ -184,6 +184,13 @@
                         :placeholder="'Укажите путь до настройки'"
                     />
                 </n-form-item>
+                <div v-if="newSettingModel.isFromExternalSource">
+                    <a
+                        v-if="newSettingModel.externalSourcePath"
+                        :href="newSettingModel.externalSourcePath"
+                        >{{ newSettingModel.externalSourcePath }}</a
+                    >
+                </div>
                 <n-form-item
                     v-if="newSettingModel.isFromExternalSource"
                     path="externalSourceKey"
