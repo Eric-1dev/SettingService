@@ -1,5 +1,5 @@
 <template>
-    <ss-layout :pageName="pageName ?? ''">
+    <ss-layout :key="$route.fullPath" :pageName="pageName ?? ''">
         <router-view> </router-view>
     </ss-layout>
 </template>

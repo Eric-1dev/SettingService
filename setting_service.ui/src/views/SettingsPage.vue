@@ -461,6 +461,12 @@ const mapValueToString = (valueType: string): string => {
     }
 };
 
+const mapApplicationNames = (): string[] => {
+    return allApplications.value
+        .map((app) => app.name)
+        .filter((appName) => applicationSelected.value.includes(appName));
+};
+
 const mapValueFromString = (valueType: string, value: string): void => {
     clearValueModel();
 
@@ -545,7 +551,9 @@ const addSetting = (setting: CreateEditSettingModel): void => {
         ?.validate()
         .then(() => {
             showAddEditDialog.value = false;
+
             setting.value = mapValueToString(setting.valueType);
+            setting.applicationNames = mapApplicationNames();
 
             const { data, onFetchResponse } = settingFetch("Add")
                 .post(setting)
@@ -574,12 +582,7 @@ const editSetting = (setting: CreateEditSettingModel): void => {
             showAddEditDialog.value = false;
 
             setting.value = mapValueToString(setting.valueType);
-
-            setting.applicationNames = allApplications.value
-                .map((app) => app.name)
-                .filter((appName) =>
-                    applicationSelected.value.includes(appName)
-                );
+            setting.applicationNames = mapApplicationNames();
 
             const { data, onFetchResponse } = settingFetch("Edit")
                 .put(setting)
