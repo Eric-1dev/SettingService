@@ -34,10 +34,14 @@
                                 collapse-mode="width"
                                 :collapsed="collapsed"
                                 show-trigger
-                                @collapse="collapsed = true"
-                                @expand="collapsed = false"
+                                @collapse="menuCollapseTrigger(true)"
+                                @expand="menuCollapseTrigger(false)"
                             >
-                                <n-menu :options="menuOptions"></n-menu>
+                                <n-menu
+                                    :options="menuOptions"
+                                    :icon-size="24"
+                                    :collapsed-icon-size="32"
+                                ></n-menu>
                             </n-layout-sider>
                             <n-layout-content style="padding: 0 5px 0 5px">
                                 <n-space :justify="'center'" :align="'center'"
@@ -55,6 +59,12 @@
 
 <script setup lang="ts">
 import {
+    Apps28Regular,
+    Home32Regular,
+    PeopleTeam32Regular,
+    Settings32Regular,
+} from "@vicons/fluent";
+import {
     NLayout,
     NButton,
     NConfigProvider,
@@ -70,8 +80,9 @@ import {
     NMessageProvider,
     NNotificationProvider,
     NThemeEditor,
+    NIcon,
 } from "naive-ui";
-import { ref, h, computed } from "vue";
+import { ref, h, Component } from "vue";
 import { RouterLink } from "vue-router";
 
 interface Props {
@@ -79,7 +90,12 @@ interface Props {
 }
 
 const isDarkTheme = ref<boolean>(localStorage.isDarkTheme === "true");
-const collapsed = ref(false);
+const collapsed = ref(localStorage.menuCollapsed === "true");
+
+const menuCollapseTrigger = (isCollapsed: boolean): void => {
+    localStorage.menuCollapsed = isCollapsed;
+    collapsed.value = isCollapsed;
+};
 
 const toggleTheme = (): void => {
     isDarkTheme.value = !isDarkTheme.value;
@@ -88,7 +104,11 @@ const toggleTheme = (): void => {
 
 const props = defineProps<Props>();
 
-const menuOptions = computed<MenuOption[]>(() => [
+const renderIcon = (icon: Component) => {
+    return () => h(NIcon, null, { default: () => h(icon) });
+};
+
+const menuOptions = ref<MenuOption[]>([
     {
         label: () =>
             h(
@@ -99,6 +119,7 @@ const menuOptions = computed<MenuOption[]>(() => [
                 { default: () => "Домашняя страница" }
             ),
         key: "home",
+        icon: renderIcon(Home32Regular),
     },
     {
         key: "home-divider",
@@ -119,6 +140,7 @@ const menuOptions = computed<MenuOption[]>(() => [
                 { default: () => "Настройки" }
             ),
         key: "settings",
+        icon: renderIcon(Settings32Regular),
     },
     {
         label: () =>
@@ -130,6 +152,7 @@ const menuOptions = computed<MenuOption[]>(() => [
                 { default: () => "Приложения" }
             ),
         key: "applications",
+        icon: renderIcon(Apps28Regular),
     },
     {
         label: () =>
@@ -141,6 +164,7 @@ const menuOptions = computed<MenuOption[]>(() => [
                 { default: () => "Пользователи" }
             ),
         key: "users",
+        icon: renderIcon(PeopleTeam32Regular),
     },
 ]);
 </script>

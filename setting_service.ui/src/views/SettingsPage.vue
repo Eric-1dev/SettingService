@@ -58,7 +58,8 @@
         ></n-data-table>
 
         <n-modal
-            :show="showAddEditDialog"
+            v-model:show="showAddEditDialog"
+            style="width: 500px"
             preset="dialog"
             :title="addEditDialogParameters.title"
             :positive-text="addEditDialogParameters.positiveText"
@@ -66,6 +67,8 @@
             @positive-click="addEditDialogParameters.positiveClick"
             @negative-click="showAddEditDialog = false"
             @close="showAddEditDialog = false"
+            @keydown.enter.prevent="addEditDialogParameters.positiveClick"
+            :mask-closable="false"
         >
             <n-form
                 ref="formRef"
@@ -99,10 +102,14 @@
                     path="isFromExternalSource"
                     label="Значение будет получаться из внешнего источника"
                 >
-                    <n-checkbox
-                        v-model:checked="newSettingModel.isFromExternalSource"
-                        @keydown.enter.prevent
-                    />
+                    <n-switch
+                        v-model:value="newSettingModel.isFromExternalSource"
+                        :size="'large'"
+                        keydown.enter.prevent
+                    >
+                        <template #checked> Да </template>
+                        <template #unchecked> Нет </template>
+                    </n-switch>
                 </n-form-item>
                 <n-form-item
                     v-if="!newSettingModel.isFromExternalSource"
@@ -115,7 +122,6 @@
                             SettingValueTypeEnum[SettingValueTypeEnum.String]
                         "
                         v-model:value="valueModel.stringValue"
-                        @keydown.enter.prevent
                         :placeholder="'Введите строковое значение'"
                     />
                     <n-input-number
@@ -184,9 +190,13 @@
                         :placeholder="'Укажите путь до настройки'"
                     />
                 </n-form-item>
-                <div v-if="newSettingModel.isFromExternalSource">
+                <div
+                    v-if="newSettingModel.isFromExternalSource"
+                    class="ss-external-link"
+                >
                     <a
                         v-if="newSettingModel.externalSourcePath"
+                        target="_blank"
                         :href="newSettingModel.externalSourcePath"
                         >{{ newSettingModel.externalSourcePath }}</a
                     >
@@ -635,6 +645,8 @@ const columns: DataTableColumns<SettingItemFrontModel> = [
     {
         title: "ID",
         key: "key",
+        titleAlign: "center",
+        width: 50,
     },
     {
         title: "Название",
@@ -660,7 +672,7 @@ const columns: DataTableColumns<SettingItemFrontModel> = [
                 NCheckbox,
                 {
                     checked: row.isFromExternalSource,
-                    disabled: true,
+                    style: "readonly",
                 },
                 {
                     default: () => "",
@@ -671,14 +683,19 @@ const columns: DataTableColumns<SettingItemFrontModel> = [
     {
         title: "Значение",
         key: "value",
+        ellipsis: {
+            tooltip: true,
+        },
     },
     {
         title: "Ссылка на внешний источник",
         key: "externalSourcePath",
+        width: 300,
     },
     {
         title: "Ключ во внешнем источнике",
         key: "externalSourceKey",
+        width: 300,
     },
     {
         title: "Привязанные приложения",
@@ -719,4 +736,16 @@ const renderAppList = (
 };
 </script>
 
-<style scoped></style>
+<style scoped>
+a:link,
+a:visited,
+a:hover,
+a:active {
+    color: rgb(19, 172, 19);
+}
+
+.ss-external-link {
+    margin-top: -20px;
+    margin-bottom: 20px;
+}
+</style>
