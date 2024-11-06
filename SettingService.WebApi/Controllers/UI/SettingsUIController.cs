@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SettingService.Entities;
 using SettingService.FrontModels;
-using SettingService.Services.Interfaces;
+using SettingService.Services.Interfaces.UI;
 
-namespace SettingService.WebApi.Controllers;
+namespace SettingService.WebApi.Controllers.UI;
 
 /// <summary>
 /// Контроллер для управлением настройками.
@@ -12,14 +12,14 @@ namespace SettingService.WebApi.Controllers;
 [ApiController]
 public class SettingsUIController : ControllerBase
 {
-    private readonly ISettingsService _settingsService;
+    private readonly ISettingsUIService _settingsUIService;
 
     /// <summary>
     /// Конструктор.
     /// </summary>
-    public SettingsUIController(ISettingsService settingsService)
+    public SettingsUIController(ISettingsUIService settingsUIService)
     {
-        _settingsService = settingsService;
+        _settingsUIService = settingsUIService;
     }
 
     /// <summary>
@@ -28,9 +28,9 @@ public class SettingsUIController : ControllerBase
     /// <param name="applicationName">Название приложения</param>
     /// <returns></returns>
     [HttpGet]
-    public async Task<OperationResult<SettingFrontModel>> GetAll(string? applicationName = null)
+    public async Task<OperationResult<SettingFrontModel>> GetAll(CancellationToken cancellationToken, string? applicationName = null)
     {
-        var result = await _settingsService.GetAll(applicationName);
+        var result = await _settingsUIService.GetAll(applicationName, cancellationToken);
 
         return await Task.FromResult(result);
     }
@@ -41,9 +41,9 @@ public class SettingsUIController : ControllerBase
     /// <returns></returns>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<OperationResult<SettingItemFrontModel>> Add(SettingItemFrontModel setting)
+    public async Task<OperationResult<SettingItemFrontModel>> Add(SettingItemFrontModel setting, CancellationToken cancellationToken)
     {
-        var result = await _settingsService.Add(setting);
+        var result = await _settingsUIService.Add(setting, cancellationToken);
 
         return result;
     }
@@ -53,9 +53,9 @@ public class SettingsUIController : ControllerBase
     /// </summary>
     /// <returns></returns>
     [HttpPut]
-    public async Task<OperationResult<SettingItemFrontModel>> Edit(SettingItemFrontModel setting)
+    public async Task<OperationResult<SettingItemFrontModel>> Edit(SettingItemFrontModel setting, CancellationToken cancellationToken)
     {
-        var result = await _settingsService.Edit(setting);
+        var result = await _settingsUIService.Edit(setting, cancellationToken);
 
         return result;
     }
@@ -65,9 +65,9 @@ public class SettingsUIController : ControllerBase
     /// </summary>
     /// <returns></returns>
     [HttpDelete("{id:int}")]
-    public async Task<OperationResult> Delete(int id)
+    public async Task<OperationResult> Delete(int id, CancellationToken cancellationToken)
     {
-        var result = await _settingsService.Delete(id);
+        var result = await _settingsUIService.Delete(id, cancellationToken);
 
         return result;
     }

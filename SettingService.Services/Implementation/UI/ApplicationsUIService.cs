@@ -4,22 +4,22 @@ using SettingService.DataLayer;
 using SettingService.Entities;
 using SettingService.FrontModels;
 using SettingService.Services.Extensions;
-using SettingService.Services.Interfaces;
+using SettingService.Services.Interfaces.UI;
 
-namespace SettingService.Services.Implementation;
+namespace SettingService.Services.Implementation.UI;
 
-internal class ApplicationsService : IApplicationsService
+internal class ApplicationsUIService : IApplicationsUIService
 {
     private readonly IDbContextFactory<SettingsContext> _dbContextFactory;
     private readonly ILogger _logger;
 
-    public ApplicationsService(IDbContextFactory<SettingsContext> dbContextFactory, ILogger<ApplicationsService> logger)
+    public ApplicationsUIService(IDbContextFactory<SettingsContext> dbContextFactory, ILogger<ApplicationsUIService> logger)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
     }
 
-    public async Task<OperationResult<IReadOnlyCollection<ApplicationFrontModel>>> GetAll()
+    public async Task<OperationResult<IReadOnlyCollection<ApplicationFrontModel>>> GetAll(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -39,7 +39,7 @@ internal class ApplicationsService : IApplicationsService
         }
     }
 
-    public async Task<OperationResult<ApplicationFrontModel>> Add(ApplicationFrontModel app)
+    public async Task<OperationResult<ApplicationFrontModel>> Add(ApplicationFrontModel app, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -61,7 +61,7 @@ internal class ApplicationsService : IApplicationsService
         }
     }
 
-    public async Task<OperationResult<ApplicationFrontModel>> Edit(ApplicationFrontModel app)
+    public async Task<OperationResult<ApplicationFrontModel>> Edit(ApplicationFrontModel app, CancellationToken cancellationToken = default)
     {
         if (app.Key == null)
         {
@@ -98,7 +98,7 @@ internal class ApplicationsService : IApplicationsService
         }
     }
 
-    public async Task<OperationResult> Delete(int id)
+    public async Task<OperationResult> Delete(int id, CancellationToken cancellationToken = default)
     {
         try
         {

@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SettingService.Entities;
 using SettingService.FrontModels;
-using SettingService.Services.Interfaces;
+using SettingService.Services.Interfaces.UI;
 
-namespace SettingService.WebApi.Controllers;
+namespace SettingService.WebApi.Controllers.UI;
 
 /// <summary>
 /// Контроллер для управлением приложениями.
@@ -12,12 +12,12 @@ namespace SettingService.WebApi.Controllers;
 [ApiController]
 public class ApplicationsUIController : ControllerBase
 {
-    private readonly IApplicationsService _applicationsService;
+    private readonly IApplicationsUIService _applicationsService;
 
     /// <summary>
     /// Конструктор.
     /// </summary>
-    public ApplicationsUIController(IApplicationsService applicationsService)
+    public ApplicationsUIController(IApplicationsUIService applicationsService)
     {
         _applicationsService = applicationsService;
     }
@@ -27,9 +27,9 @@ public class ApplicationsUIController : ControllerBase
     /// </summary>
     /// <returns></returns>
     [HttpGet]
-    public async Task<OperationResult<IReadOnlyCollection<ApplicationFrontModel>>> GetAll()
+    public async Task<OperationResult<IReadOnlyCollection<ApplicationFrontModel>>> GetAll(CancellationToken cancellationToken)
     {
-        var result = await _applicationsService.GetAll();
+        var result = await _applicationsService.GetAll(cancellationToken);
 
         return result;
     }
@@ -40,9 +40,9 @@ public class ApplicationsUIController : ControllerBase
     /// <returns></returns>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<OperationResult<ApplicationFrontModel>> Add(ApplicationFrontModel app)
+    public async Task<OperationResult<ApplicationFrontModel>> Add(ApplicationFrontModel app, CancellationToken cancellationToken)
     {
-        var result = await _applicationsService.Add(app);
+        var result = await _applicationsService.Add(app, cancellationToken);
 
         return result;
     }
@@ -52,9 +52,9 @@ public class ApplicationsUIController : ControllerBase
     /// </summary>
     /// <returns></returns>
     [HttpPut]
-    public async Task<OperationResult<ApplicationFrontModel>> Edit(ApplicationFrontModel app)
+    public async Task<OperationResult<ApplicationFrontModel>> Edit(ApplicationFrontModel app, CancellationToken cancellationToken)
     {
-        var result = await _applicationsService.Edit(app);
+        var result = await _applicationsService.Edit(app, cancellationToken);
 
         return result;
     }
@@ -64,9 +64,9 @@ public class ApplicationsUIController : ControllerBase
     /// </summary>
     /// <returns></returns>
     [HttpDelete("{id:int}")]
-    public async Task<OperationResult> Delete(int id)
+    public async Task<OperationResult> Delete(int id, CancellationToken cancellationToken)
     {
-        var result = await _applicationsService.Delete(id);
+        var result = await _applicationsService.Delete(id, cancellationToken);
 
         return result;
     }

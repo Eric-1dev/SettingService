@@ -228,7 +228,7 @@
         </n-modal>
 
         <n-modal
-            :show="showDeleteDialog"
+            v-model:show="showDeleteDialog"
             preset="confirm"
             title="Удаление приложения"
             positive-text="Удалить"
@@ -236,6 +236,8 @@
             @close="showDeleteDialog = false"
             @negative-click="showDeleteDialog = false"
             @positive-click="deleteSetting"
+            @keydown.enter.prevent="addEditDialogParameters.positiveClick"
+            :mask-closable="false"
         >
             Вы действительно хотите удалить приложение
             {{ selectedSettingRowData?.name }}? Изменения необратимы

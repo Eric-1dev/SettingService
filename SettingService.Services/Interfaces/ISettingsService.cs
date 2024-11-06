@@ -1,15 +1,10 @@
-﻿using SettingService.Entities;
-using SettingService.FrontModels;
+﻿using SettingService.Contracts;
+using SettingService.Entities;
 
 namespace SettingService.Services.Interfaces;
 
 public interface ISettingsService
 {
-    Task<OperationResult<SettingFrontModel>> GetAll(string? applicationName = null);
-
-    Task<OperationResult<SettingItemFrontModel>> Add(SettingItemFrontModel setting);
-
-    Task<OperationResult<SettingItemFrontModel>> Edit(SettingItemFrontModel setting);
-
-    Task<OperationResult> Delete(int id);
+    Task<OperationResult<IReadOnlyCollection<SettingItem>>> GetAll(string applicationName, CancellationToken cancellationToken);
+    Task<OperationResult<SettingItem>> GetByName(string applicationName, string settingName, CancellationToken cancellationToken);
 }

@@ -4,9 +4,12 @@ namespace SettingService.ApiClient.DI;
 
 public static class ServiceCollectionExtension
 {
-    public static IServiceCollection AddSettingServiceClient(this IServiceCollection services)
+    public static IServiceCollection AddSettingServiceClient(this IServiceCollection services, string baseUrl)
     {
-        services.AddScoped<ISettingServiceClient, SettingServiceClient>();
+        services.AddHttpClient<ISettingServiceClient, SettingServiceClient>(client =>
+        {
+            client.BaseAddress = new Uri(baseUrl);
+        });
 
         return services;
     }

@@ -61,7 +61,7 @@
         ></n-data-table>
 
         <n-modal
-            :show="showAddEditDialog"
+            v-model:show="showAddEditDialog"
             preset="dialog"
             :title="addEditDialogParameters.title"
             :positive-text="addEditDialogParameters.positiveText"
@@ -69,6 +69,8 @@
             @positive-click="addEditDialogParameters.positiveClick"
             @negative-click="showAddEditDialog = false"
             @close="showAddEditDialog = false"
+            @keydown.enter.prevent="addEditDialogParameters.positiveClick"
+            :mask-closable="false"
         >
             <n-form ref="formRef" :model="newAppModel" :rules="newAppRules">
                 <n-form-item path="name" label="Название">
@@ -89,7 +91,7 @@
         </n-modal>
 
         <n-modal
-            :show="showDeleteDialog"
+            v-model:show="showDeleteDialog"
             preset="confirm"
             title="Удаление приложения"
             positive-text="Удалить"
@@ -97,6 +99,8 @@
             @close="showDeleteDialog = false"
             @negative-click="showDeleteDialog = false"
             @positive-click="deleteApplication"
+            @keydown.enter.prevent="addEditDialogParameters.positiveClick"
+            :mask-closable="false"
         >
             Вы действительно хотите удалить приложение
             {{ selectedAppRowData?.name }}? Изменения необратимы

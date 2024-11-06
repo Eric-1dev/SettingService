@@ -1,11 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SettingService.Contracts;
 using SettingService.DataLayer;
 using SettingService.DataModel;
 using SettingService.Entities;
-using SettingService.FrontModels;
-using SettingService.Services.Extensions;
+using SettingService.Services.Implementation.UI;
 using SettingService.Services.Interfaces;
+using SettingService.Services.Interfaces.ExternalSource;
 
 namespace SettingService.Services.Implementation;
 
@@ -13,167 +15,104 @@ internal class SettingsService : ISettingsService
 {
     private readonly IDbContextFactory<SettingsContext> _dbContextFactory;
     private readonly ILogger _logger;
+    private IServiceProvider _serviceProvider;
 
-    public SettingsService(IDbContextFactory<SettingsContext> dbContextFactory, ILogger<SettingsService> logger)
+    public SettingsService(IDbContextFactory<SettingsContext> dbContextFactory, ILogger<SettingsUIService> logger, IServiceProvider serviceProvider)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
+        _serviceProvider = serviceProvider;
     }
 
-    public async Task<OperationResult<SettingFrontModel>> GetAll(string? applicationName = null)
+    public async Task<OperationResult<IReadOnlyCollection<SettingItem>>> GetAll(string applicationName, CancellationToken cancellationToken)
     {
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            applicationName = applicationName.ToLower();
 
-            var apps = await dbContext.Applications.Select(app => app.MapToFrontModel()).ToArrayAsync();
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var settings = dbContext.Settings
-                .Include(x => x.Applications).AsQueryable();
+            var settings = await dbContext.Settings
+                .Where(x => x.Applications.Select(app => app.Name.ToLower()).Contains(applicationName))
+                .ToArrayAsync(cancellationToken);
 
-            if(!string.IsNullOrEmpty(applicationName))
+            var settingItems = new List<SettingItem>();
+
+            foreach (var setting in settings)
             {
-                settings = settings.Where(x => x.Applications.Select(app => app.Name).Contains(applicationName));
+
+                var settingItem = GetSettingItemFromDao(setting);
+
+                settingItems.Add(settingItem);
             }
 
-            var settingFrontModels = await settings.Select(x => x.MapToFrontModel()).ToArrayAsync();
-
-            var model = new SettingFrontModel
-            {
-                AllApplications = apps,
-                Settings = settingFrontModels
-            };
-
-            return OperationResult<SettingFrontModel>.Success(model);
+            return OperationResult<IReadOnlyCollection<SettingItem>>.Success(settingItems);
         }
         catch (Exception ex)
         {
             const string errorMessage = "Не удалось получить список настроек";
             _logger.LogError(ex, errorMessage);
-            return OperationResult<SettingFrontModel>.Fail(errorMessage);
+            return OperationResult<IReadOnlyCollection<SettingItem>>.Fail(ex.ToString());
         }
     }
 
-    public async Task<OperationResult<SettingItemFrontModel>> Add(SettingItemFrontModel setting)
+    public async Task<OperationResult<SettingItem>> GetByName(string applicationName, string settingName, CancellationToken cancellationToken)
     {
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            applicationName = applicationName.ToLower();
 
-            var newApps = await dbContext.Applications.Where(x => setting.ApplicationNames.Contains(x.Name)).ToListAsync();
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var newSetting = new Setting
+            var setting = await dbContext.Settings
+                .Where(x => x.Applications.Select(app => app.Name.ToLower()).Contains(applicationName))
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (setting == null)
             {
-                Name = setting.Name,
-                Description = setting.Description,
-                Value = setting.Value,
-                ValueType = setting.ValueType,
-                Applications = newApps,
-                ExternalSourceKey = setting.ExternalSourceKey,
-                ExternalSourcePath = setting.ExternalSourcePath,
-                ExternalSourceType = setting.ExternalSourceType,
-                IsFromExternalSource = setting.IsFromExternalSource,
-            };
+                const string errorMessage = "Не найдена настройка {0} для приложения {1}";
+                _logger.LogError(errorMessage, applicationName, settingName);
+                return OperationResult<SettingItem>.Fail(string.Format(errorMessage, settingName, applicationName));
+            }
 
-            await dbContext.Settings.AddAsync(newSetting);
+            var settingItem = GetSettingItemFromDao(setting);
 
-            await dbContext.SaveChangesAsync();
-
-            return OperationResult<SettingItemFrontModel>.Success(newSetting.MapToFrontModel());
+            return OperationResult<SettingItem>.Success(settingItem);
         }
         catch (Exception ex)
         {
-            const string errorMessage = "Не удалось добавить настройку";
+            const string errorMessage = "Не удалось получить настройку";
             _logger.LogError(ex, errorMessage);
-            return OperationResult<SettingItemFrontModel>.Fail(errorMessage);
+            return OperationResult<SettingItem>.Fail(ex.ToString());
         }
     }
 
-    public async Task<OperationResult<SettingItemFrontModel>> Edit(SettingItemFrontModel setting)
+    private SettingItem GetSettingItemFromDao(Setting setting)
     {
-        if (setting.Key == null)
+        var settingItem = new SettingItem
         {
-            const string errorMessage = "Не указан ID редактируемой настройки";
-            _logger.LogError(errorMessage);
-            return OperationResult<SettingItemFrontModel>.Fail(string.Format(errorMessage));
+            Name = setting.Name,
+            ValueType = setting.ValueType
+        };
+
+        if (!setting.IsFromExternalSource)
+        {
+            settingItem.Value = setting.Value;
+        }
+        else
+        {
+            settingItem.Value = GetValueFromExternalSource(setting.ExternalSourceType, setting.ExternalSourcePath, setting.ExternalSourceKey);
         }
 
-        try
-        {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-
-            var currentSetting = await dbContext.Settings.Include(x => x.Applications).FirstOrDefaultAsync(x => x.Id == setting.Key);
-
-            var newApps = await dbContext.Applications.Where(x => setting.ApplicationNames.Contains(x.Name)).ToArrayAsync();
-
-            if (currentSetting == null)
-            {
-                const string errorMessageTemplate = "Настройка с ID = {0} не найдена в базе";
-                _logger.LogError(errorMessageTemplate, setting.Key);
-                return OperationResult<SettingItemFrontModel>.Fail(string.Format(errorMessageTemplate, setting.Key));
-            }
-
-            currentSetting.Name = setting.Name;
-            currentSetting.Description = setting.Description;
-            currentSetting.Applications.Clear();
-            currentSetting.Applications.AddRange(newApps);
-            currentSetting.IsFromExternalSource = setting.IsFromExternalSource;
-
-            if (setting.IsFromExternalSource)
-            {
-                currentSetting.Value = null;
-                currentSetting.ExternalSourcePath = setting.ExternalSourcePath;
-                currentSetting.ExternalSourceKey = setting.ExternalSourceKey;
-                currentSetting.ExternalSourceType = setting.ExternalSourceType;
-            }
-            else
-            {
-                currentSetting.Value = setting.Value;
-                currentSetting.ExternalSourcePath = null;
-                currentSetting.ExternalSourceKey = null;
-                currentSetting.ExternalSourceType = null;
-            }
-
-            currentSetting.ValueType = setting.ValueType;
-
-            await dbContext.SaveChangesAsync();
-
-            return OperationResult<SettingItemFrontModel>.Success(currentSetting.MapToFrontModel());
-        }
-        catch (Exception ex)
-        {
-            const string errorMessage = "Не удалось отредактировать настройку";
-            _logger.LogError(ex, errorMessage);
-            return OperationResult<SettingItemFrontModel>.Fail(errorMessage);
-        }
+        return settingItem;
     }
 
-    public async Task<OperationResult> Delete(int id)
+    private string GetValueFromExternalSource(ExternalSourceTypeEnum? externalSourceType, string? path, string? key)
     {
-        try
-        {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+        var service = _serviceProvider.GetServices<IExternalSourceService>().First(x => x.ExternalSourceType == externalSourceType);
 
-            var currentSetting = await dbContext.Settings.FirstOrDefaultAsync(x => x.Id == id);
+        var value = service.GetSettingValue(path, key);
 
-            if (currentSetting == null)
-            {
-                const string errorMessageTemplate = "Настройка с ID = {0} не найдена в базе";
-                _logger.LogError(errorMessageTemplate, id);
-                return OperationResult.Fail(string.Format(errorMessageTemplate, id));
-            }
-
-            dbContext.Settings.Remove(currentSetting);
-
-            await dbContext.SaveChangesAsync();
-
-            return OperationResult.Success();
-        }
-        catch (Exception ex)
-        {
-            const string errorMessage = "Не удалось удалить настройку";
-            _logger.LogError(ex, errorMessage);
-            return OperationResult.Fail(errorMessage);
-        }
+        return value;
     }
 }
