@@ -1,15 +1,15 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using SettingService.ApiClient;
+using SettingService.ApiClient.Contracts;
 using SettingService.ApiClient.DI;
 
 var services = new ServiceCollection();
 
-services.AddSettingServiceClient("http://localhost:5000");
+services.AddSettingServiceClient();
 
 var provider = services.BuildServiceProvider();
 
 var apiClient = provider.GetRequiredService<ISettingServiceClient>();
 
-var settings = await apiClient.GetAllSettings("CCS");
+var settings = await apiClient.Start();
 
 Console.ReadLine();

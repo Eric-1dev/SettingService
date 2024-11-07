@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SettingService.Contracts;
-using SettingService.Entities;
 using SettingService.Services.Interfaces;
 
 namespace SettingService.WebApi.Controllers;
@@ -27,7 +26,7 @@ public class SettingController : ControllerBase
     /// Получить указанную настройку для приложения.
     /// </summary>
     /// <param name="applicationName">Название приложения</param>
-    /// <param name="settingName">Название настройки</param>
+    /// <param name="cancellationToken"></param>
     /// <returns></returns>
     [HttpGet]
     public async Task<IReadOnlyCollection<SettingItem>> GetAll(string applicationName, CancellationToken cancellationToken)
@@ -45,6 +44,7 @@ public class SettingController : ControllerBase
     /// </summary>
     /// <param name="applicationName">Название приложения</param>
     /// <param name="settingName">Название настройки</param>
+    /// <param name="cancellationToken"></param>
     /// <returns></returns>
     [HttpGet]
     public async Task<SettingItem> GetByName(string applicationName, string settingName, CancellationToken cancellationToken)

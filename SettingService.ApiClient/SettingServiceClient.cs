@@ -1,37 +1,64 @@
-﻿using SettingService.Contracts;
-using System.Text.Json;
+﻿
+using EasyNetQ;
+using SettingService.ApiClient.Contracts;
+using SettingService.Contracts;
 
 namespace SettingService.ApiClient;
 
-public sealed class SettingServiceClient : ISettingServiceClient
+internal class SettingServiceClient : ISettingServiceClient
 {
-    const string GetAllUrl = "api/Setting/GetAll";
-    const string GetByNameUrl = "api/Setting/GetByName";
+    private readonly ISettingServiceConfiguration _configuration;
+    private readonly IWebApiClient _webApiClient;
 
-    private readonly HttpClient _client;
-
-    public SettingServiceClient(HttpClient client)
+    public SettingServiceClient(ISettingServiceConfiguration configuration, IWebApiClient webApiClient)
     {
-        _client = client;
+        _configuration = configuration;
+        _webApiClient = webApiClient;
     }
 
-    public async Task<IReadOnlyCollection<SettingItem>> GetAllSettings(string applicationName, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<SettingItem>> Start()
     {
-        var token = GetToken();
+        ValidateSettings();
 
-        var response = await _client.GetAsync($"{GetAllUrl}/?applicationName={applicationName}");
+        if (_configuration.UseRabbit)
+        {
+            InitializeBus(_configuration.RabbitConnectionParams);
+        }
 
-        response.EnsureSuccessStatusCode();
-
-        var content = await response.Content.ReadAsStringAsync();
-
-        var settings = JsonSerializer.Deserialize<IReadOnlyCollection<SettingItem>>(content);
+        var settings = await _webApiClient.GetAll(_configuration.ApplicationName);
 
         return settings;
     }
 
-    private string GetToken()
+    private void ValidateSettings()
     {
-        return "TokenString";
+        if (_configuration == null)
+            throw new Exception($"Не найдена конфигурация. Требуется реализация интерфейса {nameof(ISettingServiceConfiguration)} или задайте параметры при регистрации в DI");
+
+        if (string.IsNullOrEmpty(_configuration.ApplicationName))
+            throw new Exception($"Не задано имя приложения");
+
+        if (_configuration.UseRabbit && _configuration.RabbitConnectionParams == null)
+            throw new Exception($"Не заданы параметры подключения к RabbitMQ");
+    }
+
+    private async Task InitializeBus(RabbitConnectionParams rabbitConfig)
+    {
+        var bus = RabbitHutch.CreateBus(serviceResolver => {
+            return new ConnectionConfiguration
+            {
+                Hosts = [
+                        new HostConfiguration {
+                            Host = rabbitConfig.HostName,
+                            Port = rabbitConfig.Port,
+                        }
+                    ],
+                VirtualHost = rabbitConfig.VirtualHost,
+                UserName = rabbitConfig.UserName,
+                Password = rabbitConfig.Password,
+            };
+        }, reg => { });
+
+
     }
 }
