@@ -13,16 +13,18 @@ internal sealed class WebApiClient : IWebApiClient
 
     private readonly HttpClient _client;
 
-    public WebApiClient(HttpClient client)
+    public WebApiClient(HttpClient client, ISettingServiceConfiguration configuration)
     {
         _client = client;
+        _client.BaseAddress = new Uri(configuration.SettingServiceUrl);
     }
 
     public async Task<IReadOnlyCollection<SettingItem>> GetAll(string applicationName, CancellationToken cancellationToken = default)
     {
         var token = GetToken();
 
-        var requestUrl = HttpUtility.UrlEncode($"{GetAllUrl}/?applicationName={applicationName}");
+        var appNameParam = HttpUtility.UrlEncode(applicationName);
+        var requestUrl = $"{GetAllUrl}/?applicationName={appNameParam}";
 
         var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -42,7 +44,10 @@ internal sealed class WebApiClient : IWebApiClient
     {
         var token = GetToken();
 
-        var requestUrl = HttpUtility.UrlEncode($"{GetByNameUrl}/?applicationName={applicationName}&settingName={settingName}");
+        var appNameParam = HttpUtility.UrlEncode(applicationName);
+        var settingNameParam = HttpUtility.UrlEncode(settingName);
+
+        var requestUrl = HttpUtility.UrlEncode($"{GetByNameUrl}/?applicationName={appNameParam}&settingName={settingNameParam}");
 
         var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -57,7 +62,6 @@ internal sealed class WebApiClient : IWebApiClient
 
         return settings;
     }
-
 
     private string GetToken()
     {

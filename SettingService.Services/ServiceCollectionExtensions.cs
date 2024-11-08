@@ -16,6 +16,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISettingsUIService, SettingsUIService>();
 
         services.AddScoped<ISettingsService, SettingsService>();
+        services.AddScoped<IRabbitIntegrationService, RabbitIntegrationService>();
 
         services.AddScoped<IExternalSourceService, VaultExternalSourceService>();
         //services.AddScoped<IExternalSourceService, OtherExternalSourceService>();

@@ -4,5 +4,5 @@ namespace SettingService.ApiClient.Contracts;
 
 public interface ISettingServiceClient
 {
-    Task<IReadOnlyCollection<SettingItem>> Start();
+    Task<IReadOnlyCollection<SettingItem>> Start(CancellationToken cancellationToken);
 }

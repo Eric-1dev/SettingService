@@ -2,9 +2,19 @@
 
 internal class DefaultSettingServiceConfiguration : ISettingServiceConfiguration
 {
-    public string ApplicationName => null!;
+    public string SettingServiceUrl { get; set; }
 
-    public bool UseRabbit => false;
+    public string ApplicationName { get; set; }
 
-    public RabbitConnectionParams? RabbitConnectionParams => null;
+    public bool UseRabbit {  get; set; }
+
+    public RabbitConnectionParams? RabbitConnectionParams { get; set; }
+
+    public DefaultSettingServiceConfiguration()
+    {
+        SettingServiceUrl = null!;
+        ApplicationName = null!;
+        UseRabbit = false;
+        RabbitConnectionParams = null;
+    }
 }

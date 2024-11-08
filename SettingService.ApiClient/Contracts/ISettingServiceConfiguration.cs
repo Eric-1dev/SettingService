@@ -2,9 +2,11 @@
 
 public interface ISettingServiceConfiguration
 {
-    string ApplicationName { get; }
+    string SettingServiceUrl { get; set; }
 
-    bool UseRabbit { get; }
+    string ApplicationName { get; set; }
 
-    RabbitConnectionParams? RabbitConnectionParams { get; }
+    bool UseRabbit { get; set; }
+
+    RabbitConnectionParams? RabbitConnectionParams { get; set; }
 }

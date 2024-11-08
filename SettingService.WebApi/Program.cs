@@ -1,8 +1,12 @@
 using SettingService.DataLayer;
 using SettingService.Services;
+using SettingService.Services.Models;
+using SettingService.WebApi.Extensions;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<RabbitConfig>(builder.Configuration.GetSection("Rabbit"));
 
 builder.Services.AddControllers();
 
@@ -18,6 +22,8 @@ builder.Services.AddDbContextFactory<SettingsContext>();
 builder.Services.AddCommonServices();
 
 var app = builder.Build();
+
+app.UseRabbit();
 
 if (app.Environment.IsDevelopment())
 {

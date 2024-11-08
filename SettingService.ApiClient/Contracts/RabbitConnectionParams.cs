@@ -3,7 +3,7 @@
 public class RabbitConnectionParams
 {
     public string HostName { get; set; }
-    
+
     public ushort Port { get; set; }
 
     public string VirtualHost { get; set; }
