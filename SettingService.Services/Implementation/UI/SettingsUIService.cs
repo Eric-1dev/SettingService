@@ -115,6 +115,7 @@ internal class SettingsUIService : ISettingsUIService
         try
         {
             Setting? currentSetting;
+            string oldName;
 
             using (var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))
             {
@@ -132,6 +133,7 @@ internal class SettingsUIService : ISettingsUIService
                 if (currentSetting.EqualTo(setting))
                     return OperationResult<SettingItemFrontModel>.Fail("Не обнаружено изменений в параметрах настройки");
 
+                oldName = currentSetting.Name;
                 currentSetting.Name = setting.Name;
                 currentSetting.Description = setting.Description;
                 currentSetting.Applications.Clear();
@@ -158,7 +160,7 @@ internal class SettingsUIService : ISettingsUIService
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
 
-            await SendToBus(currentSetting, SettingChangeTypeEnum.Changed);
+            await SendToBus(currentSetting, SettingChangeTypeEnum.Changed, oldName);
 
             return OperationResult<SettingItemFrontModel>.Success(currentSetting.MapToFrontModel());
         }
@@ -204,11 +206,11 @@ internal class SettingsUIService : ISettingsUIService
         }
     }
 
-    private async Task SendToBus(Setting? setting, SettingChangeTypeEnum changeType)
+    private async Task SendToBus(Setting? setting, SettingChangeTypeEnum changeType, string? oldName = null)
     {
         if (setting == null || setting.Applications.Count == 0)
             return;
 
-        await _rabbitIntegrationService.PublishChange(setting.Name, setting.Applications.Select(x => x.Name).ToArray(), changeType);
+        await _rabbitIntegrationService.PublishChange(setting.Name, setting.Applications.Select(x => x.Name).ToArray(), changeType, oldName);
     }
 }

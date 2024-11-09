@@ -181,12 +181,12 @@ internal class SettingServiceClient : ISettingServiceClient
             }
         }
 
-        HandleChangeType(body.ChangeTypeEnum, body.SettingName, settingItem);
+        HandleChangeType(body, settingItem);
     }
 
-    private void HandleChangeType(SettingChangeTypeEnum changeType, string settingName, SettingItem? settingItem)
+    private void HandleChangeType(RabbitMessage message, SettingItem? settingItem)
     {
-        switch (changeType)
+        switch (message.ChangeTypeEnum)
         {
             case SettingChangeTypeEnum.Added:
                 {
@@ -195,30 +195,34 @@ internal class SettingServiceClient : ISettingServiceClient
                 }
             case SettingChangeTypeEnum.Removed:
                 {
-                    var existingValue = _settings.FirstOrDefault(x => x.Name == settingName);
-                    if (existingValue == null)
+                    var existingItem = _settings.FirstOrDefault(x => x.Name == message.SettingName);
+                    if (existingItem == null)
                     {
-                        _logger.LogWarning("Не найдена существующая настройка {settingName}. Удаление не требуется.", settingName);
+                        _logger.LogWarning("Не найдена существующая настройка {settingName}. Удаление не требуется.", message.SettingName);
                     }
                     else
                     {
-                        _settings.Remove(existingValue);
-                        _logger.LogInformation("Настройка удалена {settingName}", settingName);
+                        _settings.Remove(existingItem);
+                        _logger.LogInformation("Настройка удалена {settingName}", message.SettingName);
                     }
                     break;
                 }
             case SettingChangeTypeEnum.Changed:
                 {
-                    var existingValue = _settings.FirstOrDefault(x => x.Name == settingName);
-                    if (existingValue == null)
+                    var nameToFind = message.OldSettingName ?? message.SettingName;
+
+                    var existingItem = _settings.FirstOrDefault(x => x.Name == nameToFind);
+                    if (existingItem == null)
                     {
                         _settings.Add(settingItem!);
-                        _logger.LogWarning("Не найдена существующая настройка {settingName}. Добавляю.", settingName);
+                        _logger.LogWarning("Не найдена существующая настройка {settingName}. Добавляю.", message.SettingName);
                     }
                     else
                     {
-                        existingValue.Value = settingItem!.Value;
-                        _logger.LogInformation("Значение настройки {settingName} обновлено", settingName);
+                        existingItem.Value = settingItem!.Value;
+                        existingItem.Name = message.SettingName;
+
+                        _logger.LogInformation("Значение настройки {settingName} обновлено", message.SettingName);
                     }
                     break;
                 }

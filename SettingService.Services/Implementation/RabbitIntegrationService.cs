@@ -43,7 +43,7 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
         await _bus.Advanced.BindAsync(_exchange, queue, "setting-service.server.*");
     }
 
-    public async Task PublishChange(string name, string[] applicationNames, SettingChangeTypeEnum changeType)
+    public async Task PublishChange(string name, string[] applicationNames, SettingChangeTypeEnum changeType, string? oldName)
     {
         if (_bus == null)
             throw new Exception("Шина не проинициализирована");
@@ -51,7 +51,8 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
         var message = new Message<RabbitMessage>(new RabbitMessage
         {
             SettingName = name,
-            ChangeTypeEnum = changeType
+            ChangeTypeEnum = changeType,
+            OldSettingName = oldName,
         });
 
         var routingKey = $".{string.Join(".", applicationNames)}.";

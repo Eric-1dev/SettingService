@@ -11,7 +11,7 @@ public static class ServiceCollectionExtension
         {
             //client.DefaultRequestHeaders.Authorization
         });
-        
+
         services.AddScoped<ISettingServiceClient, SettingServiceClient>();
 
         return services;
