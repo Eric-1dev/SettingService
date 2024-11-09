@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using SettingService.ApiClient.Contracts;
+using SettingService.ApiClient.Interfaces;
+using SettingService.ApiClient.Services;
 
 namespace SettingService.ApiClient.DI;
 
@@ -11,6 +13,8 @@ public static class ServiceCollectionExtension
         {
             //client.DefaultRequestHeaders.Authorization
         });
+
+        services.AddScoped<IRabbitIntegrationService, RabbitIntegrationService>();
 
         services.AddScoped<ISettingServiceClient, SettingServiceClient>();
 

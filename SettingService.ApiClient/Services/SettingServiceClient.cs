@@ -1,10 +1,9 @@
-﻿using EasyNetQ;
-using EasyNetQ.Topology;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using SettingService.ApiClient.Contracts;
+using SettingService.ApiClient.Interfaces;
 using SettingService.Contracts;
 
-namespace SettingService.ApiClient;
+namespace SettingService.ApiClient.Services;
 
 internal class SettingServiceClient : ISettingServiceClient
 {
@@ -14,12 +13,17 @@ internal class SettingServiceClient : ISettingServiceClient
 
     private readonly ISettingServiceConfiguration _configuration;
     private readonly IWebApiClient _webApiClient;
+    private readonly IRabbitIntegrationService _rabbitIntegrationService;
     private readonly ILogger _logger;
 
-    public SettingServiceClient(ISettingServiceConfiguration configuration, IWebApiClient webApiClient, ILogger<SettingServiceClient> logger)
+    public SettingServiceClient(ISettingServiceConfiguration configuration,
+        IWebApiClient webApiClient,
+        IRabbitIntegrationService rabbitIntegrationService,
+        ILogger<SettingServiceClient> logger)
     {
         _configuration = configuration;
         _webApiClient = webApiClient;
+        _rabbitIntegrationService = rabbitIntegrationService;
         _logger = logger;
     }
 
@@ -31,7 +35,7 @@ internal class SettingServiceClient : ISettingServiceClient
 
         if (_configuration.UseRabbit)
         {
-            await InitializeBus(_configuration, cancellationToken);
+            await _rabbitIntegrationService.InitializeBus(_configuration.RabbitConnectionParams!, _configuration.ApplicationName, OnMessage, cancellationToken);
         }
 
         var settings = await _webApiClient.GetAll(_configuration.ApplicationName);
@@ -118,37 +122,6 @@ internal class SettingServiceClient : ISettingServiceClient
             throw new Exception($"Не заданы параметры подключения к RabbitMQ");
     }
 
-    private async Task InitializeBus(ISettingServiceConfiguration config, CancellationToken cancellationToken)
-    {
-        var rabbitConfig = _configuration.RabbitConnectionParams!;
-
-        var bus = RabbitHutch.CreateBus(serviceResolver =>
-        {
-            return new ConnectionConfiguration
-            {
-                Hosts = [
-                        new HostConfiguration {
-                            Host = rabbitConfig.HostName,
-                            Port = rabbitConfig.Port,
-                        }
-                    ],
-                VirtualHost = rabbitConfig.VirtualHost,
-                UserName = rabbitConfig.UserName,
-                Password = rabbitConfig.Password,
-            };
-        }, reg => { });
-
-        var exchange = await bus.Advanced.ExchangeDeclareAsync("setting-service-ex", type: ExchangeType.Topic, durable: true, autoDelete: false);
-
-        var identifier = Guid.NewGuid().ToString();
-        var queueName = $"setting_service.{config.ApplicationName}.{identifier}-q";
-        var queue = await bus.Advanced.QueueDeclareAsync(queueName, durable: false, exclusive: true, autoDelete: true);
-
-        await bus.Advanced.BindAsync(exchange, queue, $"#.{config.ApplicationName}.#");
-
-        bus.Advanced.Consume<RabbitMessage>(queue, (message, messageReceivedInfo) => OnMessage(message, messageReceivedInfo, cancellationToken));
-    }
-
     private void ThrowIfRunning()
     {
         if (_isRunning)
@@ -163,25 +136,23 @@ internal class SettingServiceClient : ISettingServiceClient
         }
     }
 
-    private async Task OnMessage(IMessage<RabbitMessage> message, MessageReceivedInfo messageReceivedInfo, CancellationToken cancellationToken)
+    private async Task OnMessage(RabbitMessage message, CancellationToken cancellationToken)
     {
-        var body = message.Body;
-
-        _logger.LogInformation("Изменена настройка {settingName}. Запрашиваю новое значение", body.SettingName);
+        _logger.LogInformation("Изменена настройка {settingName}. Запрашиваю новое значение", message.SettingName);
 
         SettingItem? settingItem = null;
-        if (body.ChangeTypeEnum != SettingChangeTypeEnum.Removed)
+        if (message.ChangeTypeEnum != SettingChangeTypeEnum.Removed)
         {
-            settingItem = await _webApiClient.GetByName(_configuration.ApplicationName, body.SettingName);
+            settingItem = await _webApiClient.GetByName(_configuration.ApplicationName, message.SettingName);
 
             if (settingItem == null)
             {
-                _logger.LogWarning("Не удалось получить настройку {settingName} из сервиса", body.SettingName);
+                _logger.LogWarning("Не удалось получить настройку {settingName} из сервиса", message.SettingName);
                 return;
             }
         }
 
-        HandleChangeType(body, settingItem);
+        HandleChangeType(message, settingItem);
     }
 
     private void HandleChangeType(RabbitMessage message, SettingItem? settingItem)
@@ -191,6 +162,7 @@ internal class SettingServiceClient : ISettingServiceClient
             case SettingChangeTypeEnum.Added:
                 {
                     _settings.Add(settingItem!);
+                    _logger.LogInformation("Добавлена новая настройка {settingName}", message.SettingName);
                     break;
                 }
             case SettingChangeTypeEnum.Removed:
@@ -220,9 +192,17 @@ internal class SettingServiceClient : ISettingServiceClient
                     else
                     {
                         existingItem.Value = settingItem!.Value;
-                        existingItem.Name = message.SettingName;
 
-                        _logger.LogInformation("Значение настройки {settingName} обновлено", message.SettingName);
+                        if (existingItem.Name != message.SettingName)
+                        {
+                            var oldName = existingItem.Name;
+                            existingItem.Name = message.SettingName;
+                            _logger.LogInformation("Значение настройки {oldName} обновлено. Настройка переименована в {newName}", oldName, message.SettingName);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Значение настройки {settingName} обновлено", message.SettingName);
+                        }
                     }
                     break;
                 }

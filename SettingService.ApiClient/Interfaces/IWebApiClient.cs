@@ -1,6 +1,6 @@
 ﻿using SettingService.Contracts;
 
-namespace SettingService.ApiClient.Contracts;
+namespace SettingService.ApiClient.Interfaces;
 
 internal interface IWebApiClient
 {

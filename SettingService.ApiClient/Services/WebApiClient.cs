@@ -1,10 +1,11 @@
 ﻿using SettingService.ApiClient.Contracts;
+using SettingService.ApiClient.Interfaces;
 using SettingService.Contracts;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Web;
 
-namespace SettingService.ApiClient;
+namespace SettingService.ApiClient.Services;
 
 internal sealed class WebApiClient : IWebApiClient
 {
@@ -32,7 +33,7 @@ internal sealed class WebApiClient : IWebApiClient
         var response = await _client.GetAsync(requestUrl, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
-            return []; 
+            return [];
 
         var content = await response.Content.ReadAsStringAsync();
 

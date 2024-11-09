@@ -65,7 +65,7 @@ internal class SettingsService : ISettingsService
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
             var setting = await dbContext.Settings
-                .Where(x => x.Applications.Select(app => app.Name.ToLower()).Contains(applicationName))
+                .Where(x => x.Name == settingName && x.Applications.Select(app => app.Name.ToLower()).Contains(applicationName))
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (setting == null)
