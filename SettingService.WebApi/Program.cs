@@ -18,8 +18,10 @@ builder.Services.AddSwaggerGen(options =>
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 });
 
-builder.Services.AddDbContextFactory<SettingsContext>();
-builder.Services.AddCommonServices();
+builder.Services.AddDbContextFactory<SettingsContext>()
+    .AddCommonServices()
+    .AddRabbit()
+    .AddSerilogLogger();
 
 var app = builder.Build();
 

@@ -23,11 +23,11 @@ internal class ApplicationsUIService : IApplicationsUIService
     {
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
             var apps = await dbContext.Applications
                 .Select(x => x.MapToFrontModel())
-                .ToArrayAsync();
+                .ToArrayAsync(cancellationToken);
 
             return OperationResult<IReadOnlyCollection<ApplicationFrontModel>>.Success(apps);
         }
@@ -43,13 +43,17 @@ internal class ApplicationsUIService : IApplicationsUIService
     {
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var isAlreadyExists = await dbContext.Applications.AnyAsync(x => x.Name == app.Name, cancellationToken);
+            if (isAlreadyExists)
+                return OperationResult<ApplicationFrontModel>.Fail("Приложение с таким названием уже существует");
 
             var application = app.MapFromFrontModel();
 
-            await dbContext.Applications.AddAsync(application);
+            await dbContext.Applications.AddAsync(application, cancellationToken);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return OperationResult<ApplicationFrontModel>.Success(application.MapToFrontModel());
         }
@@ -72,9 +76,9 @@ internal class ApplicationsUIService : IApplicationsUIService
 
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var currentApp = await dbContext.Applications.FirstOrDefaultAsync(x => x.Id == app.Key);
+            var currentApp = await dbContext.Applications.FirstOrDefaultAsync(x => x.Id == app.Key, cancellationToken);
 
             if (currentApp == null)
             {
@@ -83,10 +87,13 @@ internal class ApplicationsUIService : IApplicationsUIService
                 return OperationResult<ApplicationFrontModel>.Fail(string.Format(errorMessageTemplate, app.Key));
             }
 
+            if (currentApp.EqualTo(app))
+                return OperationResult<ApplicationFrontModel>.Fail("Не обнаружено изменений в параметрах приложения");
+
             currentApp.Name = app.Name;
             currentApp.Description = app.Description;
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return OperationResult<ApplicationFrontModel>.Success(currentApp.MapToFrontModel());
         }
@@ -102,9 +109,9 @@ internal class ApplicationsUIService : IApplicationsUIService
     {
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var currentApp = await dbContext.Applications.FirstOrDefaultAsync(x => x.Id == id);
+            var currentApp = await dbContext.Applications.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
             if (currentApp == null)
             {
@@ -115,7 +122,7 @@ internal class ApplicationsUIService : IApplicationsUIService
 
             dbContext.Applications.Remove(currentApp);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return OperationResult.Success();
         }

@@ -1,10 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SettingService.Contracts;
 using SettingService.DataLayer;
 using SettingService.DataModel;
 using SettingService.Entities;
 using SettingService.FrontModels;
 using SettingService.Services.Extensions;
+using SettingService.Services.Interfaces;
 using SettingService.Services.Interfaces.UI;
 
 namespace SettingService.Services.Implementation.UI;
@@ -13,30 +15,33 @@ internal class SettingsUIService : ISettingsUIService
 {
     private readonly IDbContextFactory<SettingsContext> _dbContextFactory;
     private readonly ILogger _logger;
+    private readonly IRabbitIntegrationService _rabbitIntegrationService;
 
-    public SettingsUIService(IDbContextFactory<SettingsContext> dbContextFactory, ILogger<SettingsUIService> logger)
+    public SettingsUIService(IDbContextFactory<SettingsContext> dbContextFactory,
+        ILogger<SettingsUIService> logger,
+        IRabbitIntegrationService rabbitIntegrationService)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
+        _rabbitIntegrationService = rabbitIntegrationService;
     }
 
     public async Task<OperationResult<SettingFrontModel>> GetAll(string? applicationName = null, CancellationToken cancellationToken = default)
     {
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var apps = await dbContext.Applications.Select(app => app.MapToFrontModel()).ToArrayAsync();
+            var apps = await dbContext.Applications.Select(app => app.MapToFrontModel()).ToArrayAsync(cancellationToken);
 
-            var settings = dbContext.Settings
-                .Include(x => x.Applications).AsQueryable();
+            var settings = dbContext.Settings.Include(x => x.Applications).AsQueryable();
 
             if (!string.IsNullOrEmpty(applicationName))
             {
                 settings = settings.Where(x => x.Applications.Select(app => app.Name).Contains(applicationName));
             }
 
-            var settingFrontModels = await settings.Select(x => x.MapToFrontModel()).ToArrayAsync();
+            var settingFrontModels = await settings.Select(x => x.MapToFrontModel()).ToArrayAsync(cancellationToken);
 
             var model = new SettingFrontModel
             {
@@ -58,26 +63,35 @@ internal class SettingsUIService : ISettingsUIService
     {
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            Setting newSetting;
 
-            var newApps = await dbContext.Applications.Where(x => setting.ApplicationNames.Contains(x.Name)).ToListAsync();
-
-            var newSetting = new Setting
+            using (var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))
             {
-                Name = setting.Name,
-                Description = setting.Description,
-                Value = setting.Value,
-                ValueType = setting.ValueType,
-                Applications = newApps,
-                ExternalSourceKey = setting.ExternalSourceKey,
-                ExternalSourcePath = setting.ExternalSourcePath,
-                ExternalSourceType = setting.ExternalSourceType,
-                IsFromExternalSource = setting.IsFromExternalSource,
-            };
+                var isAlreadyExists = await dbContext.Settings.AnyAsync(x => x.Name == setting.Name, cancellationToken);
+                if (isAlreadyExists)
+                    return OperationResult<SettingItemFrontModel>.Fail("Настройка с таким названием уже существует");
 
-            await dbContext.Settings.AddAsync(newSetting);
+                var newApps = await dbContext.Applications.Where(x => setting.ApplicationNames.Contains(x.Name)).ToListAsync(cancellationToken);
 
-            await dbContext.SaveChangesAsync();
+                newSetting = new Setting
+                {
+                    Name = setting.Name,
+                    Description = setting.Description,
+                    Value = setting.Value,
+                    ValueType = setting.ValueType,
+                    Applications = newApps,
+                    ExternalSourceKey = setting.ExternalSourceKey,
+                    ExternalSourcePath = setting.ExternalSourcePath,
+                    ExternalSourceType = setting.ExternalSourceType,
+                    IsFromExternalSource = setting.IsFromExternalSource,
+                };
+
+                await dbContext.Settings.AddAsync(newSetting, cancellationToken);
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            await SendToBus(newSetting, SettingChangeTypeEnum.Added);
 
             return OperationResult<SettingItemFrontModel>.Success(newSetting.MapToFrontModel());
         }
@@ -100,43 +114,51 @@ internal class SettingsUIService : ISettingsUIService
 
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            Setting? currentSetting;
 
-            var currentSetting = await dbContext.Settings.Include(x => x.Applications).FirstOrDefaultAsync(x => x.Id == setting.Key);
-
-            var newApps = await dbContext.Applications.Where(x => setting.ApplicationNames.Contains(x.Name)).ToArrayAsync();
-
-            if (currentSetting == null)
+            using (var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))
             {
-                const string errorMessageTemplate = "Настройка с ID = {0} не найдена в базе";
-                _logger.LogError(errorMessageTemplate, setting.Key);
-                return OperationResult<SettingItemFrontModel>.Fail(string.Format(errorMessageTemplate, setting.Key));
+                currentSetting = await dbContext.Settings.Include(x => x.Applications).FirstOrDefaultAsync(x => x.Id == setting.Key, cancellationToken);
+
+                var newApps = await dbContext.Applications.Where(x => setting.ApplicationNames.Contains(x.Name)).ToArrayAsync(cancellationToken);
+
+                if (currentSetting == null)
+                {
+                    const string errorMessageTemplate = "Настройка с ID = {0} не найдена в базе";
+                    _logger.LogError(errorMessageTemplate, setting.Key);
+                    return OperationResult<SettingItemFrontModel>.Fail(string.Format(errorMessageTemplate, setting.Key));
+                }
+
+                if (currentSetting.EqualTo(setting))
+                    return OperationResult<SettingItemFrontModel>.Fail("Не обнаружено изменений в параметрах настройки");
+
+                currentSetting.Name = setting.Name;
+                currentSetting.Description = setting.Description;
+                currentSetting.Applications.Clear();
+                currentSetting.Applications.AddRange(newApps);
+                currentSetting.IsFromExternalSource = setting.IsFromExternalSource;
+
+                if (setting.IsFromExternalSource)
+                {
+                    currentSetting.Value = null;
+                    currentSetting.ExternalSourcePath = setting.ExternalSourcePath;
+                    currentSetting.ExternalSourceKey = setting.ExternalSourceKey;
+                    currentSetting.ExternalSourceType = setting.ExternalSourceType;
+                }
+                else
+                {
+                    currentSetting.Value = setting.Value;
+                    currentSetting.ExternalSourcePath = null;
+                    currentSetting.ExternalSourceKey = null;
+                    currentSetting.ExternalSourceType = null;
+                }
+
+                currentSetting.ValueType = setting.ValueType;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
             }
 
-            currentSetting.Name = setting.Name;
-            currentSetting.Description = setting.Description;
-            currentSetting.Applications.Clear();
-            currentSetting.Applications.AddRange(newApps);
-            currentSetting.IsFromExternalSource = setting.IsFromExternalSource;
-
-            if (setting.IsFromExternalSource)
-            {
-                currentSetting.Value = null;
-                currentSetting.ExternalSourcePath = setting.ExternalSourcePath;
-                currentSetting.ExternalSourceKey = setting.ExternalSourceKey;
-                currentSetting.ExternalSourceType = setting.ExternalSourceType;
-            }
-            else
-            {
-                currentSetting.Value = setting.Value;
-                currentSetting.ExternalSourcePath = null;
-                currentSetting.ExternalSourceKey = null;
-                currentSetting.ExternalSourceType = null;
-            }
-
-            currentSetting.ValueType = setting.ValueType;
-
-            await dbContext.SaveChangesAsync();
+            await SendToBus(currentSetting, SettingChangeTypeEnum.Changed);
 
             return OperationResult<SettingItemFrontModel>.Success(currentSetting.MapToFrontModel());
         }
@@ -152,20 +174,25 @@ internal class SettingsUIService : ISettingsUIService
     {
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            Setting? currentSetting;
 
-            var currentSetting = await dbContext.Settings.FirstOrDefaultAsync(x => x.Id == id);
-
-            if (currentSetting == null)
+            using (var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken))
             {
-                const string errorMessageTemplate = "Настройка с ID = {0} не найдена в базе";
-                _logger.LogError(errorMessageTemplate, id);
-                return OperationResult.Fail(string.Format(errorMessageTemplate, id));
+                currentSetting = await dbContext.Settings.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+                if (currentSetting == null)
+                {
+                    const string errorMessageTemplate = "Настройка с ID = {0} не найдена в базе";
+                    _logger.LogError(errorMessageTemplate, id);
+                    return OperationResult.Fail(string.Format(errorMessageTemplate, id));
+                }
+
+                dbContext.Settings.Remove(currentSetting);
+
+                await dbContext.SaveChangesAsync(cancellationToken);
             }
 
-            dbContext.Settings.Remove(currentSetting);
-
-            await dbContext.SaveChangesAsync();
+            await SendToBus(currentSetting, SettingChangeTypeEnum.Removed);
 
             return OperationResult.Success();
         }
@@ -175,5 +202,13 @@ internal class SettingsUIService : ISettingsUIService
             _logger.LogError(ex, errorMessage);
             return OperationResult.Fail(errorMessage);
         }
+    }
+
+    private async Task SendToBus(Setting? setting, SettingChangeTypeEnum changeType)
+    {
+        if (setting == null || setting.Applications.Count == 0)
+            return;
+
+        await _rabbitIntegrationService.PublishChange(setting.Name, setting.Applications.Select(x => x.Name).ToArray(), changeType);
     }
 }

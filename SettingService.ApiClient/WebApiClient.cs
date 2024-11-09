@@ -31,30 +31,32 @@ internal sealed class WebApiClient : IWebApiClient
 
         var response = await _client.GetAsync(requestUrl, cancellationToken);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+            return []; 
 
         var content = await response.Content.ReadAsStringAsync();
 
         var settings = JsonSerializer.Deserialize<IReadOnlyCollection<SettingItem>>(content);
 
-        return settings;
+        return settings ?? [];
     }
 
-    public async Task<SettingItem> GetByName(string applicationName, string settingName, CancellationToken cancellationToken = default)
+    public async Task<SettingItem?> GetByName(string applicationName, string settingName, CancellationToken cancellationToken = default)
     {
         var token = GetToken();
 
         var appNameParam = HttpUtility.UrlEncode(applicationName);
         var settingNameParam = HttpUtility.UrlEncode(settingName);
 
-        var requestUrl = HttpUtility.UrlEncode($"{GetByNameUrl}/?applicationName={appNameParam}&settingName={settingNameParam}");
+        var requestUrl = $"{GetByNameUrl}/?applicationName={appNameParam}&settingName={settingNameParam}";
 
         var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var response = await _client.GetAsync(requestUrl, cancellationToken);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+            return null;
 
         var content = await response.Content.ReadAsStringAsync();
 

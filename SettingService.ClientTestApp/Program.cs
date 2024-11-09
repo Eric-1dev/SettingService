@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
 using SettingService.ApiClient.Contracts;
 using SettingService.ApiClient.DI;
-using SettingService.Contracts;
 
 var services = new ServiceCollection();
 
@@ -20,12 +22,23 @@ services.AddSettingServiceClient(config =>
     };
 });
 
+services.AddLogging(builder =>
+{
+    builder.ClearProviders();
+
+    var logger = new LoggerConfiguration()
+        .WriteTo.Console()
+        .CreateLogger();
+
+    builder.AddSerilog(logger);
+});
+
 var provider = services.BuildServiceProvider();
 
-var apiClient = provider.GetRequiredService<ISettingServiceClient>();
+var settingServiceClient = provider.GetRequiredService<ISettingServiceClient>();
 
 await Task.Delay(4000);
 
-var settings = await apiClient.Start(CancellationToken.None);
+await settingServiceClient.Start(CancellationToken.None);
 
 Console.ReadLine();

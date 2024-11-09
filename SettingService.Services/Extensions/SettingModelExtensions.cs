@@ -21,4 +21,17 @@ public static class SettingModelExtensions
             ApplicationNames = setting.Applications.Select(x => x.Name).ToArray()
         };
     }
+
+    public static bool EqualTo(this Setting setting, SettingItemFrontModel frontModel)
+    {
+        return setting.Name == frontModel.Name &&
+            setting.Description == frontModel.Description &&
+            setting.ValueType == frontModel.ValueType &&
+            setting.Value == frontModel.Value &&
+            setting.ExternalSourceType == frontModel.ExternalSourceType &&
+            setting.IsFromExternalSource == frontModel.IsFromExternalSource &&
+            setting.ExternalSourcePath == frontModel.ExternalSourcePath &&
+            setting.ExternalSourceKey == frontModel.ExternalSourceKey &&
+            setting.Applications.Select(x => x.Name).SequenceEqual(frontModel.ApplicationNames);
+    }
 }

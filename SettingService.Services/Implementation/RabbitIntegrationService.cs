@@ -1,6 +1,7 @@
 ﻿using EasyNetQ;
 using EasyNetQ.Topology;
 using Microsoft.Extensions.Options;
+using SettingService.Contracts;
 using SettingService.Services.Interfaces;
 using SettingService.Services.Models;
 
@@ -8,7 +9,9 @@ namespace SettingService.Services.Implementation;
 
 internal class RabbitIntegrationService : IRabbitIntegrationService
 {
+    private static IBus? _bus;
     private readonly IOptions<RabbitConfig> _config;
+    private static IExchange? _exchange;
 
     public RabbitIntegrationService(IOptions<RabbitConfig> config)
     {
@@ -17,7 +20,7 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
 
     public async Task Initialize()
     {
-        var bus = RabbitHutch.CreateBus(serviceResolver => {
+        _bus = RabbitHutch.CreateBus(serviceResolver => {
             return new ConnectionConfiguration
             {
                 Hosts = [
@@ -32,11 +35,27 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
             };
         }, reg => { });
 
-        var exchange = await bus.Advanced.ExchangeDeclareAsync("setting-service-ex", type: ExchangeType.Topic, durable: true, autoDelete: false);
+        _exchange = await _bus.Advanced.ExchangeDeclareAsync("setting-service-ex", type: ExchangeType.Topic, durable: true, autoDelete: false);
 
-        var queueName = $"setting_serive.server.${Guid.NewGuid()}-q";
-        var queue = await bus.Advanced.QueueDeclareAsync(queueName, durable: false, exclusive: true, autoDelete: true);
+        var queueName = $"setting_service.server.{Guid.NewGuid()}-q";
+        var queue = await _bus.Advanced.QueueDeclareAsync(queueName, durable: false, exclusive: true, autoDelete: true);
 
-        await bus.Advanced.BindAsync(exchange, queue, $"setting-service.server.*");
+        await _bus.Advanced.BindAsync(_exchange, queue, "setting-service.server.*");
+    }
+
+    public async Task PublishChange(string name, string[] applicationNames, SettingChangeTypeEnum changeType)
+    {
+        if (_bus == null)
+            throw new Exception("Шина не проинициализирована");
+
+        var message = new Message<RabbitMessage>(new RabbitMessage
+        {
+            SettingName = name,
+            ChangeTypeEnum = changeType
+        });
+
+        var routingKey = $".{string.Join(".", applicationNames)}.";
+
+        await _bus.Advanced.PublishAsync(_exchange, routingKey, mandatory: true, message);
     }
 }

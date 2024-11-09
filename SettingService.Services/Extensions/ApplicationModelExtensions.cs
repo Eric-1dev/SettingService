@@ -24,4 +24,10 @@ public static class ApplicationModelExtensions
             Description = applicationFrontModel.Description
         };
     }
+
+    public static bool EqualTo(this Application application, ApplicationFrontModel frontModel)
+    {
+        return application.Name == frontModel.Name &&
+            application.Description == frontModel.Description;
+    }
 }

@@ -25,6 +25,7 @@ public class SettingsUIController : ControllerBase
     /// <summary>
     /// Получить все настройки для приложения.
     /// </summary>
+    /// <param name="cancellationToken"></param>
     /// <param name="applicationName">Название приложения</param>
     /// <returns></returns>
     [HttpGet]

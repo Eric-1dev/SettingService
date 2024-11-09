@@ -1,8 +1,18 @@
-﻿using SettingService.Contracts;
-
-namespace SettingService.ApiClient.Contracts;
+﻿namespace SettingService.ApiClient.Contracts;
 
 public interface ISettingServiceClient
 {
-    Task<IReadOnlyCollection<SettingItem>> Start(CancellationToken cancellationToken);
+    Task Start(CancellationToken cancellationToken = default);
+
+    string? GetStringSetting(string settingName);
+
+    int? GetIntSetting(string settingName);
+
+    long? GetLongSetting(string settingName);
+
+    double? GetDoubleSetting(string settingName);
+
+    decimal? GetDecimalSetting(string settingName);
+
+    bool? GetBoolSetting(string settingName);
 }
