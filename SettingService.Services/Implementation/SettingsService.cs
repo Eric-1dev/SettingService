@@ -40,7 +40,6 @@ internal class SettingsService : ISettingsService
 
             foreach (var setting in settings)
             {
-
                 var settingItem = GetSettingItemFromDao(setting);
 
                 settingItems.Add(settingItem);
@@ -95,19 +94,19 @@ internal class SettingsService : ISettingsService
             ValueType = setting.ValueType
         };
 
-        if (!setting.IsFromExternalSource)
+        if (setting.IsFromExternalSource)
         {
-            settingItem.Value = setting.Value;
+            settingItem.Value = GetValueFromExternalSource(setting.ExternalSourceType, setting.ExternalSourcePath, setting.ExternalSourceKey);
         }
         else
         {
-            settingItem.Value = GetValueFromExternalSource(setting.ExternalSourceType, setting.ExternalSourcePath, setting.ExternalSourceKey);
+            settingItem.Value = setting.Value;
         }
 
         return settingItem;
     }
 
-    private string GetValueFromExternalSource(ExternalSourceTypeEnum? externalSourceType, string? path, string? key)
+    private string? GetValueFromExternalSource(ExternalSourceTypeEnum? externalSourceType, string? path, string? key)
     {
         var service = _serviceProvider.GetServices<IExternalSourceService>().First(x => x.ExternalSourceType == externalSourceType);
 
