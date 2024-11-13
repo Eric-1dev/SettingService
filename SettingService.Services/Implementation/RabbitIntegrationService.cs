@@ -33,8 +33,11 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
                 VirtualHost = _config.Value.VirtualHost,
                 UserName = _config.Value.UserName,
                 Password = _config.Value.Password,
+                PublisherConfirms = true,
             };
         }, reg => { });
+
+        _bus.Advanced.Conventions.ConsumerTagConvention = () => Environment.MachineName;
 
         _exchange = await _bus.Advanced.ExchangeDeclareAsync("setting-service-ex", type: ExchangeType.Topic, durable: true, autoDelete: false);
 

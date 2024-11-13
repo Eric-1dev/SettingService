@@ -8,7 +8,6 @@ using SettingService.Entities;
 using SettingService.Services.Implementation.UI;
 using SettingService.Services.Interfaces;
 using SettingService.Services.Interfaces.ExternalSource;
-using System.Collections.Concurrent;
 
 namespace SettingService.Services.Implementation;
 
@@ -17,14 +16,31 @@ internal class SettingsService : ISettingsService
     private readonly IDbContextFactory<SettingsContext> _dbContextFactory;
     private readonly ILogger _logger;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ICacheService _cacheService;
 
-    private static readonly ConcurrentDictionary<string, SettingItem> _settingsCache = [];
-
-    public SettingsService(IDbContextFactory<SettingsContext> dbContextFactory, ILogger<SettingsUIService> logger, IServiceProvider serviceProvider)
+    public SettingsService(IDbContextFactory<SettingsContext> dbContextFactory,
+        ILogger<SettingsUIService> logger,
+        IServiceProvider serviceProvider,
+        ICacheService cacheService)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
         _serviceProvider = serviceProvider;
+        _cacheService = cacheService;
+    }
+
+    public async Task InitializeCache(CancellationToken cancellationToken)
+    {
+        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var settings = await dbContext.Settings.ToArrayAsync(cancellationToken);
+
+        foreach (var setting in settings)
+        {
+            var settingItem = await GetSettingItemFromDao(setting);
+
+            _cacheService.Add(settingItem);
+        }
     }
 
     public async Task<OperationResult<IReadOnlyCollection<SettingItem>>> GetAll(string applicationName, CancellationToken cancellationToken)
@@ -35,18 +51,12 @@ internal class SettingsService : ISettingsService
 
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var settings = await dbContext.Settings
+            var settingNames = await dbContext.Settings
                 .Where(x => x.Applications.Select(app => app.Name.ToLower()).Contains(applicationName))
+                .Select(x => x.Name)
                 .ToArrayAsync(cancellationToken);
 
-            var settingItems = new List<SettingItem>();
-
-            foreach (var setting in settings)
-            {
-                var settingItem = await GetSettingItemFromDao(setting);
-
-                settingItems.Add(settingItem);
-            }
+            var settingItems = _cacheService.Get(settingNames);
 
             return OperationResult<IReadOnlyCollection<SettingItem>>.Success(settingItems);
         }
@@ -77,7 +87,10 @@ internal class SettingsService : ISettingsService
                 return OperationResult<SettingItem>.Fail(string.Format(errorMessage, settingName, applicationName));
             }
 
-            var settingItem = await GetSettingItemFromDao(setting);
+            var settingItem = _cacheService.Get(setting.Name);
+
+            if (settingItem == null)
+                settingItem = await GetSettingItemFromDao(setting);
 
             return OperationResult<SettingItem>.Success(settingItem);
         }
@@ -113,14 +126,31 @@ internal class SettingsService : ISettingsService
     {
         var service = _serviceProvider.GetServices<IExternalSourceService>().First(x => x.ExternalSourceType == externalSourceType);
 
-        var value = await service.GetSettingValueAsync(path, key);
+        var value = await service.GetSettingValueAsync(path!, key);
 
         return value;
     }
 
-    public async Task HandleRabbitMessage(RabbitMessage message)
+    public Task HandleRabbitMessage(RabbitMessage message)
     {
+        const string template = "Получено обновление настройки {settingName}. Тип обновления: {changeType}";
+        _logger.LogInformation(template, message.OldSettingName ?? message.SettingItem.Name, message.ChangeTypeEnum);
 
+        switch (message.ChangeTypeEnum)
+        {
+            case SettingChangeTypeEnum.Added:
+                _cacheService.Add(message.SettingItem);
+                break;
+            case SettingChangeTypeEnum.Removed:
+                _cacheService.Remove(message.SettingItem.Name!);
+                break;
+            case SettingChangeTypeEnum.Changed:
+                var settingName = message.OldSettingName ?? message.SettingItem.Name!;
+                _cacheService.Remove(settingName);
+                _cacheService.Add(message.SettingItem);
+                break;
+        }
+
+        return Task.CompletedTask;
     }
-
 }

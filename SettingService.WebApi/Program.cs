@@ -1,5 +1,6 @@
 using SettingService.DataLayer;
 using SettingService.Services;
+using SettingService.Services.Interfaces;
 using SettingService.Services.Models;
 using SettingService.WebApi.Extensions;
 using System.Reflection;
@@ -45,5 +46,11 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+await app.Services
+    .CreateScope()
+    .ServiceProvider
+    .GetRequiredService<ISettingsService>()
+    .InitializeCache(CancellationToken.None);
 
 app.Run();

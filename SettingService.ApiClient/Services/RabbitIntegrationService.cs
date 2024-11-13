@@ -29,6 +29,8 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
             };
         }, reg => { });
 
+        bus.Advanced.Conventions.ConsumerTagConvention = () => Environment.MachineName;
+
         var exchange = await bus.Advanced.ExchangeDeclareAsync("setting-service-ex", type: ExchangeType.Topic, durable: true, autoDelete: false);
 
         var identifier = Guid.NewGuid().ToString();

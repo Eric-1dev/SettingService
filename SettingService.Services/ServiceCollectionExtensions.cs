@@ -12,6 +12,8 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddCommonServices(this IServiceCollection services)
     {
+        services.AddSingleton<ICacheService, CacheService>();
+        
         services.AddScoped<IApplicationsUIService, ApplicationsUIService>();
         services.AddScoped<ISettingsUIService, SettingsUIService>();
 

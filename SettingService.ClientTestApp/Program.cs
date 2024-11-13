@@ -10,7 +10,7 @@ services.AddSettingServiceClient(config =>
 {
     config.SettingServiceUrl = "http://localhost:5186";
     config.ApplicationName = "CCS";
-    config.UseRabbit = false;
+    config.UseRabbit = true;
     config.RabbitConnectionParams = new RabbitConnectionParams
     {
         HostName = "ryzen-pc",
