@@ -16,14 +16,17 @@ internal class SettingsUIService : ISettingsUIService
     private readonly IDbContextFactory<SettingsContext> _dbContextFactory;
     private readonly ILogger _logger;
     private readonly IRabbitIntegrationService _rabbitIntegrationService;
+    private readonly ISettingsService _settingsService;
 
     public SettingsUIService(IDbContextFactory<SettingsContext> dbContextFactory,
         ILogger<SettingsUIService> logger,
-        IRabbitIntegrationService rabbitIntegrationService)
+        IRabbitIntegrationService rabbitIntegrationService,
+        ISettingsService settingsService)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
         _rabbitIntegrationService = rabbitIntegrationService;
+        _settingsService = settingsService;
     }
 
     public async Task<OperationResult<SettingFrontModel>> GetAll(string? applicationName = null, CancellationToken cancellationToken = default)
@@ -208,9 +211,11 @@ internal class SettingsUIService : ISettingsUIService
 
     private async Task SendToBus(Setting? setting, SettingChangeTypeEnum changeType, string? oldName = null)
     {
-        if (setting == null || setting.Applications.Count == 0)
+        if (setting == null)
             return;
 
-        await _rabbitIntegrationService.PublishChange(setting.Name, setting.Applications.Select(x => x.Name).ToArray(), changeType, oldName);
+        var settingItem = await _settingsService.GetSettingItemFromDao(setting);
+
+        await _rabbitIntegrationService.PublishChange(settingItem, setting.Applications.Select(x => x.Name).ToArray(), changeType, oldName);
     }
 }

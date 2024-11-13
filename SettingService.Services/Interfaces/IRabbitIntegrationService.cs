@@ -5,5 +5,8 @@ namespace SettingService.Services.Interfaces;
 public interface IRabbitIntegrationService
 {
     Task Initialize();
-    Task PublishChange(string name, string[] applicationNames, SettingChangeTypeEnum changeType, string? oldName);
+    
+    Task PublishChange(SettingItem settingItem, string[] applicationNames, SettingChangeTypeEnum changeType, string? oldName);
+
+    void Consume(Func<RabbitMessage, Task> onMessage);
 }

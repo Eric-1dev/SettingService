@@ -136,72 +136,55 @@ internal class SettingServiceClient : ISettingServiceClient
         }
     }
 
-    private async Task OnMessage(RabbitMessage message, CancellationToken cancellationToken)
+    private void OnMessage(RabbitMessage message, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Изменена настройка {settingName}. Запрашиваю новое значение", message.SettingName);
+        _logger.LogInformation("Изменена настройка {settingName}", message.SettingItem.Name);
 
-        SettingItem? settingItem = null;
-        if (message.ChangeTypeEnum != SettingChangeTypeEnum.Removed)
-        {
-            settingItem = await _webApiClient.GetByName(_configuration.ApplicationName, message.SettingName);
-
-            if (settingItem == null)
-            {
-                _logger.LogWarning("Не удалось получить настройку {settingName} из сервиса", message.SettingName);
-                return;
-            }
-        }
-
-        HandleChangeType(message, settingItem);
-    }
-
-    private void HandleChangeType(RabbitMessage message, SettingItem? settingItem)
-    {
         switch (message.ChangeTypeEnum)
         {
             case SettingChangeTypeEnum.Added:
                 {
-                    _settings.Add(settingItem!);
-                    _logger.LogInformation("Добавлена новая настройка {settingName}", message.SettingName);
+                    _settings.Add(message.SettingItem);
+                    _logger.LogInformation("Добавлена новая настройка {settingName}", message.SettingItem.Name);
                     break;
                 }
             case SettingChangeTypeEnum.Removed:
                 {
-                    var existingItem = _settings.FirstOrDefault(x => x.Name == message.SettingName);
+                    var existingItem = _settings.FirstOrDefault(x => x.Name == message.SettingItem.Name);
                     if (existingItem == null)
                     {
-                        _logger.LogWarning("Не найдена существующая настройка {settingName}. Удаление не требуется.", message.SettingName);
+                        _logger.LogWarning("Не найдена существующая настройка {settingName}. Удаление не требуется.", message.SettingItem.Name);
                     }
                     else
                     {
                         _settings.Remove(existingItem);
-                        _logger.LogInformation("Настройка удалена {settingName}", message.SettingName);
+                        _logger.LogInformation("Настройка удалена {settingName}", message.SettingItem.Name);
                     }
                     break;
                 }
             case SettingChangeTypeEnum.Changed:
                 {
-                    var nameToFind = message.OldSettingName ?? message.SettingName;
+                    var nameToFind = message.OldSettingName ?? message.SettingItem.Name;
 
                     var existingItem = _settings.FirstOrDefault(x => x.Name == nameToFind);
                     if (existingItem == null)
                     {
-                        _settings.Add(settingItem!);
-                        _logger.LogWarning("Не найдена существующая настройка {settingName}. Добавляю.", message.SettingName);
+                        _settings.Add(message.SettingItem);
+                        _logger.LogWarning("Не найдена существующая настройка {settingName}. Добавляю.", message.SettingItem.Name);
                     }
                     else
                     {
-                        existingItem.Value = settingItem!.Value;
+                        existingItem.Value = message.SettingItem.Value;
 
-                        if (existingItem.Name != message.SettingName)
+                        if (existingItem.Name != message.SettingItem.Name)
                         {
                             var oldName = existingItem.Name;
-                            existingItem.Name = message.SettingName;
-                            _logger.LogInformation("Значение настройки {oldName} обновлено. Настройка переименована в {newName}", oldName, message.SettingName);
+                            existingItem.Name = message.SettingItem.Name;
+                            _logger.LogInformation("Значение настройки {oldName} обновлено. Настройка переименована в {newName}", oldName, message.SettingItem.Name);
                         }
                         else
                         {
-                            _logger.LogInformation("Значение настройки {settingName} обновлено", message.SettingName);
+                            _logger.LogInformation("Значение настройки {settingName} обновлено", message.SettingItem.Name);
                         }
                     }
                     break;

@@ -7,8 +7,8 @@ internal class VaultExternalSourceService : IExternalSourceService
 {
     public ExternalSourceTypeEnum ExternalSourceType => ExternalSourceTypeEnum.Vault;
 
-    public string? GetSettingValue(string path, string? key)
+    public async Task<string?> GetSettingValueAsync(string path, string? key)
     {
-        return $"{path}-{key}-value";
+        return await Task.FromResult($"{path}-{key}-value");
     }
 }

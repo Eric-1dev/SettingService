@@ -7,6 +7,6 @@ internal interface IRabbitIntegrationService
 {
     Task InitializeBus(RabbitConnectionParams rabbitConfig,
         string applicationName,
-        Func<RabbitMessage, CancellationToken, Task> onMessageReceived,
+        Action<RabbitMessage, CancellationToken> onMessageReceived,
         CancellationToken cancellationToken);
 }

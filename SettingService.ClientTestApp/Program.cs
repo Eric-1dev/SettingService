@@ -10,7 +10,7 @@ services.AddSettingServiceClient(config =>
 {
     config.SettingServiceUrl = "http://localhost:5186";
     config.ApplicationName = "CCS";
-    config.UseRabbit = true;
+    config.UseRabbit = false;
     config.RabbitConnectionParams = new RabbitConnectionParams
     {
         HostName = "ryzen-pc",
@@ -36,7 +36,7 @@ var provider = services.BuildServiceProvider();
 
 var settingServiceClient = provider.GetRequiredService<ISettingServiceClient>();
 
-await Task.Delay(4000);
+await Task.Delay(TimeSpan.FromSeconds(3));
 
 await settingServiceClient.Start(CancellationToken.None);
 

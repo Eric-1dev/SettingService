@@ -6,7 +6,7 @@ using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.Configure<RabbitConfig>(builder.Configuration.GetSection("Rabbit"));
+builder.Services.Configure<RabbitConfig>(builder.Configuration.GetSection("RabbitConfig"));
 
 builder.Services.AddControllers();
 
@@ -21,7 +21,7 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddDbContextFactory<SettingsContext>()
     .AddCommonServices()
     .AddRabbit()
-    .AddSerilogLogger();
+    .AddLogger();
 
 var app = builder.Build();
 

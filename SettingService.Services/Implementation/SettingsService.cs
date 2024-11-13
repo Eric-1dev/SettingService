@@ -8,6 +8,7 @@ using SettingService.Entities;
 using SettingService.Services.Implementation.UI;
 using SettingService.Services.Interfaces;
 using SettingService.Services.Interfaces.ExternalSource;
+using System.Collections.Concurrent;
 
 namespace SettingService.Services.Implementation;
 
@@ -15,7 +16,9 @@ internal class SettingsService : ISettingsService
 {
     private readonly IDbContextFactory<SettingsContext> _dbContextFactory;
     private readonly ILogger _logger;
-    private IServiceProvider _serviceProvider;
+    private readonly IServiceProvider _serviceProvider;
+
+    private static readonly ConcurrentDictionary<string, SettingItem> _settingsCache = [];
 
     public SettingsService(IDbContextFactory<SettingsContext> dbContextFactory, ILogger<SettingsUIService> logger, IServiceProvider serviceProvider)
     {
@@ -40,7 +43,7 @@ internal class SettingsService : ISettingsService
 
             foreach (var setting in settings)
             {
-                var settingItem = GetSettingItemFromDao(setting);
+                var settingItem = await GetSettingItemFromDao(setting);
 
                 settingItems.Add(settingItem);
             }
@@ -74,7 +77,7 @@ internal class SettingsService : ISettingsService
                 return OperationResult<SettingItem>.Fail(string.Format(errorMessage, settingName, applicationName));
             }
 
-            var settingItem = GetSettingItemFromDao(setting);
+            var settingItem = await GetSettingItemFromDao(setting);
 
             return OperationResult<SettingItem>.Success(settingItem);
         }
@@ -86,7 +89,7 @@ internal class SettingsService : ISettingsService
         }
     }
 
-    private SettingItem GetSettingItemFromDao(Setting setting)
+    public async Task<SettingItem> GetSettingItemFromDao(Setting setting)
     {
         var settingItem = new SettingItem
         {
@@ -96,7 +99,7 @@ internal class SettingsService : ISettingsService
 
         if (setting.IsFromExternalSource)
         {
-            settingItem.Value = GetValueFromExternalSource(setting.ExternalSourceType, setting.ExternalSourcePath, setting.ExternalSourceKey);
+            settingItem.Value = await GetValueFromExternalSource(setting.ExternalSourceType, setting.ExternalSourcePath, setting.ExternalSourceKey);
         }
         else
         {
@@ -106,12 +109,18 @@ internal class SettingsService : ISettingsService
         return settingItem;
     }
 
-    private string? GetValueFromExternalSource(ExternalSourceTypeEnum? externalSourceType, string? path, string? key)
+    private async Task<string?> GetValueFromExternalSource(ExternalSourceTypeEnum? externalSourceType, string? path, string? key)
     {
         var service = _serviceProvider.GetServices<IExternalSourceService>().First(x => x.ExternalSourceType == externalSourceType);
 
-        var value = service.GetSettingValue(path, key);
+        var value = await service.GetSettingValueAsync(path, key);
 
         return value;
     }
+
+    public async Task HandleRabbitMessage(RabbitMessage message)
+    {
+
+    }
+
 }

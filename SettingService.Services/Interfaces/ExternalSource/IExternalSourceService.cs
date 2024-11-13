@@ -6,5 +6,5 @@ internal interface IExternalSourceService
 {
     ExternalSourceTypeEnum ExternalSourceType { get; }
 
-    string? GetSettingValue(string? path, string? key);
+    Task<string?> GetSettingValueAsync(string path, string? key);
 }

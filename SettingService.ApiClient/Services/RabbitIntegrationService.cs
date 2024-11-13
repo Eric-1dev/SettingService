@@ -10,7 +10,7 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
 {
     public async Task InitializeBus(RabbitConnectionParams rabbitConfig,
         string applicationName,
-        Func<RabbitMessage, CancellationToken, Task> onMessageReceived,
+        Action<RabbitMessage, CancellationToken> onMessageReceived,
         CancellationToken cancellationToken)
     {
         var bus = RabbitHutch.CreateBus(serviceResolver =>

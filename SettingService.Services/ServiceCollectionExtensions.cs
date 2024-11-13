@@ -25,7 +25,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddRabbit(this IServiceCollection services)
     {
-        services.AddSingleton<IRabbitIntegrationService, RabbitIntegrationService>();
+        services.AddScoped<IRabbitIntegrationService, RabbitIntegrationService>();
 
         return services;
     }
