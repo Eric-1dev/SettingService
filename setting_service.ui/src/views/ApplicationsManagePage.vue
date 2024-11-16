@@ -75,14 +75,14 @@
             <n-form ref="formRef" :model="newAppModel" :rules="newAppRules">
                 <n-form-item path="name" label="Название">
                     <n-input
-                        v-model:value="newAppModel.name"
+                        v-model:value.trim="newAppModel.name"
                         @keydown.enter.prevent
                         :placeholder="'Введите название'"
                     />
                 </n-form-item>
                 <n-form-item path="description" label="Описание (опционально)">
                     <n-input
-                        v-model:value="newAppModel.description"
+                        v-model:value.trim="newAppModel.description"
                         @keydown.enter.prevent
                         :placeholder="'Введите описание'"
                     />

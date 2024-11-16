@@ -11,17 +11,20 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
 {
     private static IBus? _bus;
     private readonly IOptions<RabbitConfig> _config;
+    private readonly IEncryptionService _encryptionService;
     private static IExchange? _exchange;
     private static readonly string _serverQueueName = $"setting_service.server.{Guid.NewGuid()}-q";
 
-    public RabbitIntegrationService(IOptions<RabbitConfig> config)
+    public RabbitIntegrationService(IOptions<RabbitConfig> config, IEncryptionService encryptionService)
     {
         _config = config;
+        _encryptionService = encryptionService;
     }
 
     public async Task Initialize()
     {
-        _bus = RabbitHutch.CreateBus(serviceResolver => {
+        _bus = RabbitHutch.CreateBus(serviceResolver =>
+        {
             return new ConnectionConfiguration
             {
                 Hosts = [
@@ -51,11 +54,18 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
         if (_bus == null)
             throw new Exception("Шина не проинициализирована");
 
+        var encryptedValue = string.Empty;
+
+        if (!string.IsNullOrEmpty(settingItem.Value))
+            encryptedValue = _encryptionService.Encrypt(settingItem.Value!);
+
         var message = new Message<RabbitMessage>(new RabbitMessage
         {
             ChangeTypeEnum = changeType,
             OldSettingName = oldName,
-            SettingItem = settingItem,
+            CurrentName = settingItem.Name,
+            EncryptedValue = encryptedValue,
+            ValueType = settingItem.ValueType
         });
 
         var routingKey = $"setting-service-server.{string.Join(".", applicationNames)}.";

@@ -8,6 +8,7 @@ using System.Reflection;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<RabbitConfig>(builder.Configuration.GetSection("RabbitConfig"));
+builder.Services.Configure<CryptoSettings>(builder.Configuration.GetSection("CryptoSettings"));
 
 builder.Services.AddControllers();
 

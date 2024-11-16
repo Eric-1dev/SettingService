@@ -17,16 +17,19 @@ internal class SettingsService : ISettingsService
     private readonly ILogger _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly ICacheService _cacheService;
+    private readonly IEncryptionService _encryptionService;
 
     public SettingsService(IDbContextFactory<SettingsContext> dbContextFactory,
         ILogger<SettingsUIService> logger,
         IServiceProvider serviceProvider,
-        ICacheService cacheService)
+        ICacheService cacheService,
+        IEncryptionService encryptionService)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
         _serviceProvider = serviceProvider;
         _cacheService = cacheService;
+        _encryptionService = encryptionService;
     }
 
     public async Task InitializeCache(CancellationToken cancellationToken)
@@ -134,20 +137,32 @@ internal class SettingsService : ISettingsService
     public Task HandleRabbitMessage(RabbitMessage message)
     {
         const string template = "Получено обновление настройки {settingName}. Тип обновления: {changeType}";
-        _logger.LogInformation(template, message.OldSettingName ?? message.SettingItem.Name, message.ChangeTypeEnum);
+        _logger.LogInformation(template, message.OldSettingName ?? message.CurrentName, message.ChangeTypeEnum);
+
+        var decryptedValue = string.Empty;
+
+        if (!string.IsNullOrEmpty(message.EncryptedValue))
+            decryptedValue = _encryptionService.Decrypt(message.EncryptedValue!);
+
+        var settingItem = new SettingItem
+        {
+            Name = message.CurrentName,
+            Value = decryptedValue,
+            ValueType = message.ValueType
+        };
 
         switch (message.ChangeTypeEnum)
         {
             case SettingChangeTypeEnum.Added:
-                _cacheService.Add(message.SettingItem);
+                _cacheService.Add(settingItem);
                 break;
             case SettingChangeTypeEnum.Removed:
-                _cacheService.Remove(message.SettingItem.Name!);
+                _cacheService.Remove(settingItem.Name!);
                 break;
             case SettingChangeTypeEnum.Changed:
-                var settingName = message.OldSettingName ?? message.SettingItem.Name!;
+                var settingName = message.OldSettingName ?? settingItem.Name!;
                 _cacheService.Remove(settingName);
-                _cacheService.Add(message.SettingItem);
+                _cacheService.Add(settingItem);
                 break;
         }
 

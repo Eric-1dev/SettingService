@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 
 namespace SettingService.Services.Implementation;
 
+//todo вытащить в отдельную сборку, добавить привязку к SettingChangeTypeEnum, заиспользовать в клиенте
 internal class CacheService : ICacheService
 {
     private readonly ConcurrentDictionary<string, SettingItem> _settingsCache = [];

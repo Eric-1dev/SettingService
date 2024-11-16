@@ -6,5 +6,9 @@ public class RabbitMessage
     
     public string? OldSettingName { get; set; }
 
-    public SettingItem SettingItem { get; set; }
+    public string? CurrentName { get; set; }
+
+    public string? EncryptedValue { get; set; }
+
+    public SettingValueTypeEnum ValueType { get; set; }
 }

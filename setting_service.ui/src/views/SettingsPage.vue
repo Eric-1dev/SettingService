@@ -77,14 +77,14 @@
             >
                 <n-form-item path="name" label="Название">
                     <n-input
-                        v-model:value="newSettingModel.name"
+                        v-model:value.trim="newSettingModel.name"
                         @keydown.enter.prevent
                         :placeholder="'Введите название'"
                     />
                 </n-form-item>
                 <n-form-item path="description" label="Описание">
                     <n-input
-                        v-model:value="newSettingModel.description"
+                        v-model:value.trim="newSettingModel.description"
                         @keydown.enter.prevent
                         :placeholder="'Введите описание'"
                     />
@@ -121,7 +121,7 @@
                             newSettingModel.valueType ===
                             SettingValueTypeEnum[SettingValueTypeEnum.String]
                         "
-                        v-model:value="valueModel.stringValue"
+                        v-model:value.trim="valueModel.stringValue"
                         :placeholder="'Введите строковое значение'"
                     />
                     <n-input-number
@@ -185,7 +185,7 @@
                     label="Путь до значения настройки во внешнем источнике"
                 >
                     <n-input
-                        v-model:value="newSettingModel.externalSourcePath"
+                        v-model:value.trim="newSettingModel.externalSourcePath"
                         @keydown.enter.prevent
                         :placeholder="'Укажите путь до настройки'"
                     />
@@ -207,7 +207,7 @@
                     label="Ключ значения настройки во внешнем источнике (опционально)"
                 >
                     <n-input
-                        v-model:value="newSettingModel.externalSourceKey"
+                        v-model:value.trim="newSettingModel.externalSourceKey"
                         @keydown.enter.prevent
                         :placeholder="'Введите ключ настройки во внешнем источнике'"
                     />
