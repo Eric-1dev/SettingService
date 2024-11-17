@@ -41,8 +41,11 @@ internal class CacheService : ICacheService
                 _settingsCache.TryRemove(settingItem.Name!, out var _);
                 break;
             case SettingChangeTypeEnum.Changed:
-                var settingName = oldSettingName ?? settingItem.Name;
-                _settingsCache.TryRemove(settingName!, out var _);
+                if (oldSettingName != null && oldSettingName != settingItem.Name)
+                {
+                    _settingsCache.TryRemove(oldSettingName, out var _);
+                }
+
                 _settingsCache.AddOrUpdate(settingItem.Name!, settingItem, (settingName, oldValue) => settingItem);
                 break;
         }

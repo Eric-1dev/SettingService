@@ -51,7 +51,7 @@ internal class EncryptionService : IEncryptionService
 
         using (var rsa = RSA.Create())
         {
-            rsa.ImportRSAPrivateKey(_privateKey, out int _);
+            rsa.ImportPkcs8PrivateKey(_privateKey, out int _);
             decryptedBytes = rsa.Decrypt(encryptedBytes, RSAEncryptionPadding.OaepSHA256);
         }
 
