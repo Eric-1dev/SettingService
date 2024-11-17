@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using SettingService.ApiClient.Contracts;
 using SettingService.ApiClient.Interfaces;
+using SettingService.Cache;
 using SettingService.Contracts;
 
 namespace SettingService.ApiClient.Services;
@@ -9,21 +10,23 @@ internal class SettingServiceClient : ISettingServiceClient
 {
     private static bool _isRunning = false;
     private static readonly object _locker = new();
-    private static List<SettingItem> _settings = [];
 
     private readonly ISettingServiceConfiguration _configuration;
     private readonly IWebApiClient _webApiClient;
     private readonly IRabbitIntegrationService _rabbitIntegrationService;
+    private readonly ICacheService _cacheService;
     private readonly ILogger _logger;
 
     public SettingServiceClient(ISettingServiceConfiguration configuration,
         IWebApiClient webApiClient,
         IRabbitIntegrationService rabbitIntegrationService,
+        ICacheService cacheService,
         ILogger<SettingServiceClient> logger)
     {
         _configuration = configuration;
         _webApiClient = webApiClient;
         _rabbitIntegrationService = rabbitIntegrationService;
+        _cacheService = cacheService;
         _logger = logger;
     }
 
@@ -35,12 +38,14 @@ internal class SettingServiceClient : ISettingServiceClient
 
         if (_configuration.UseRabbit)
         {
-            await _rabbitIntegrationService.InitializeBus(_configuration.RabbitConnectionParams!, _configuration.ApplicationName, OnMessage, cancellationToken);
+            var privateKey = await _webApiClient.GetPrivateKey(cancellationToken);
+
+            await _rabbitIntegrationService.InitializeBus(_configuration.RabbitConnectionParams!, _configuration.ApplicationName, privateKey, cancellationToken);
         }
 
         var settings = await _webApiClient.GetAll(_configuration.ApplicationName);
 
-        _settings = [.. settings];
+        _cacheService.Initialize(settings);
     }
 
     public string? GetStringSetting(string settingName)
@@ -105,7 +110,7 @@ internal class SettingServiceClient : ISettingServiceClient
 
     private SettingItem? GetSetting(string settingName)
     {
-        var setting = _settings.FirstOrDefault(x => x.Name == settingName);
+        var setting = _cacheService.Get(settingName);
 
         return setting;
     }
@@ -133,73 +138,6 @@ internal class SettingServiceClient : ISettingServiceClient
                 throw new InvalidOperationException("Клиент сервиса настроек уже проинициализирован");
 
             _isRunning = true;
-        }
-    }
-
-    private void OnMessage(RabbitMessage message, CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Изменена настройка {settingName}", message.CurrentName);
-
-        string value = string.Empty;
-
-        if (!string.IsNullOrEmpty(message.EncryptedValue))
-            value = message.EncryptedValue!; //todo расшифровка
-
-        var settingItem = new SettingItem
-        {
-            Name = message.CurrentName,
-            Value = value,
-            ValueType = message.ValueType
-        };
-
-        switch (message.ChangeTypeEnum)
-        {
-            case SettingChangeTypeEnum.Added:
-                {
-                    _settings.Add(settingItem);
-                    _logger.LogInformation("Добавлена новая настройка {settingName}", settingItem.Name);
-                    break;
-                }
-            case SettingChangeTypeEnum.Removed:
-                {
-                    var existingItem = _settings.FirstOrDefault(x => x.Name == settingItem.Name);
-                    if (existingItem == null)
-                    {
-                        _logger.LogWarning("Не найдена существующая настройка {settingName}. Удаление не требуется.", settingItem.Name);
-                    }
-                    else
-                    {
-                        _settings.Remove(existingItem);
-                        _logger.LogInformation("Настройка удалена {settingName}", settingItem.Name);
-                    }
-                    break;
-                }
-            case SettingChangeTypeEnum.Changed:
-                {
-                    var nameToFind = message.OldSettingName ?? settingItem.Name;
-                    var existingItem = _settings.FirstOrDefault(x => x.Name == nameToFind);
-                    if (existingItem == null)
-                    {
-                        _settings.Add(settingItem);
-                        _logger.LogWarning("Не найдена существующая настройка {settingName}. Добавляю.", settingItem.Name);
-                    }
-                    else
-                    {
-                        existingItem.Value = settingItem.Value;
-                        existingItem.ValueType = message.ValueType;
-
-                        if (existingItem.Name != message.OldSettingName)
-                        {
-                            existingItem.Name = settingItem.Name;
-                            _logger.LogInformation("Значение настройки {oldName} обновлено. Настройка переименована в {newName}", message.OldSettingName, settingItem.Name);
-                        }
-                        else
-                        {
-                            _logger.LogInformation("Значение настройки {settingName} обновлено", settingItem.Name);
-                        }
-                    }
-                    break;
-                }
         }
     }
 }

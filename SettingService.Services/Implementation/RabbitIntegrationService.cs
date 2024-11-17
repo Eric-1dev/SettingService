@@ -1,24 +1,34 @@
 ﻿using EasyNetQ;
 using EasyNetQ.Topology;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SettingService.Contracts;
 using SettingService.Services.Interfaces;
 using SettingService.Services.Models;
+using SettingService.Cache;
 
 namespace SettingService.Services.Implementation;
 
 internal class RabbitIntegrationService : IRabbitIntegrationService
 {
     private static IBus? _bus;
-    private readonly IOptions<RabbitConfig> _config;
-    private readonly IEncryptionService _encryptionService;
     private static IExchange? _exchange;
     private static readonly string _serverQueueName = $"setting_service.server.{Guid.NewGuid()}-q";
+    
+    private readonly IOptions<RabbitConfig> _config;
+    private readonly IEncryptionService _encryptionService;
+    private readonly ILogger _logger;
+    private readonly ICacheService _cacheService;
 
-    public RabbitIntegrationService(IOptions<RabbitConfig> config, IEncryptionService encryptionService)
+    public RabbitIntegrationService(IOptions<RabbitConfig> config,
+        IEncryptionService encryptionService,
+        ILogger<RabbitIntegrationService> logger,
+        ICacheService cacheService)
     {
         _config = config;
         _encryptionService = encryptionService;
+        _logger = logger;
+        _cacheService = cacheService;
     }
 
     public async Task Initialize()
@@ -47,6 +57,11 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
         var queue = await _bus.Advanced.QueueDeclareAsync(_serverQueueName, durable: false, exclusive: true, autoDelete: true);
 
         await _bus.Advanced.BindAsync(_exchange, queue, "setting-service-server.#");
+
+        _bus.Advanced.Consume<RabbitMessage>(queue, async (message, messageInfo) =>
+        {
+            await HandleRabbitMessage(message.Body);
+        });
     }
 
     public async Task PublishChange(SettingItem settingItem, string[] applicationNames, SettingChangeTypeEnum changeType, string? oldName)
@@ -61,7 +76,7 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
 
         var message = new Message<RabbitMessage>(new RabbitMessage
         {
-            ChangeTypeEnum = changeType,
+            ChangeType = changeType,
             OldSettingName = oldName,
             CurrentName = settingItem.Name,
             EncryptedValue = encryptedValue,
@@ -73,16 +88,25 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
         await _bus.Advanced.PublishAsync(_exchange, routingKey, mandatory: true, message);
     }
 
-    public void Consume(Func<RabbitMessage, Task> onMessage)
+    private Task HandleRabbitMessage(RabbitMessage message)
     {
-        if (_bus == null)
-            throw new Exception("Шина не проинициализирована");
+        const string template = "Получено обновление настройки {settingName}. Тип обновления: {changeType}";
+        _logger.LogInformation(template, message.OldSettingName ?? message.CurrentName, message.ChangeType);
 
-        var queue = new Queue(_serverQueueName, isExclusive: true);
+        var decryptedValue = string.Empty;
 
-        _bus.Advanced.Consume<RabbitMessage>(queue, async (message, messageInfo) =>
+        if (!string.IsNullOrEmpty(message.EncryptedValue))
+            decryptedValue = _encryptionService.Decrypt(message.EncryptedValue!);
+
+        var settingItem = new SettingItem
         {
-            await onMessage(message.Body);
-        });
+            Name = message.CurrentName,
+            Value = decryptedValue,
+            ValueType = message.ValueType
+        };
+
+        _cacheService.HandleUpdate(message.ChangeType, settingItem, message.OldSettingName);
+
+        return Task.CompletedTask;
     }
 }

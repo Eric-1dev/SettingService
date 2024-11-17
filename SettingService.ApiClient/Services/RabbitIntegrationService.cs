@@ -1,18 +1,35 @@
 ﻿using EasyNetQ;
 using EasyNetQ.Topology;
+using Microsoft.Extensions.Logging;
 using SettingService.ApiClient.Contracts;
 using SettingService.ApiClient.Interfaces;
+using SettingService.Cache;
 using SettingService.Contracts;
 
 namespace SettingService.ApiClient.Services;
 
 internal class RabbitIntegrationService : IRabbitIntegrationService
 {
+    private readonly ICacheService _cacheService;
+    private readonly IEncryptionService _encryptionService;
+    private readonly ILogger _logger;
+
+    public RabbitIntegrationService(ICacheService cacheService,
+        IEncryptionService encryptionService,
+        ILogger<RabbitIntegrationService> logger)
+    {
+        _cacheService = cacheService;
+        _encryptionService = encryptionService;
+        _logger = logger;
+    }
+
     public async Task InitializeBus(RabbitConnectionParams rabbitConfig,
         string applicationName,
-        Action<RabbitMessage, CancellationToken> onMessageReceived,
+        string privateKey,
         CancellationToken cancellationToken)
     {
+        _encryptionService.Initialize(privateKey);
+
         var bus = RabbitHutch.CreateBus(serviceResolver =>
         {
             return new ConnectionConfiguration
@@ -39,6 +56,25 @@ internal class RabbitIntegrationService : IRabbitIntegrationService
 
         await bus.Advanced.BindAsync(exchange, queue, $"#.{applicationName}.#");
 
-        bus.Advanced.Consume<RabbitMessage>(queue, (message, messageReceivedInfo) => onMessageReceived(message.Body, cancellationToken));
+        bus.Advanced.Consume<RabbitMessage>(queue, (message, messageReceivedInfo) => OnMessage(message.Body, cancellationToken));
+    }
+
+    private void OnMessage(RabbitMessage message, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Изменена настройка {settingName}", message.CurrentName);
+
+        string value = string.Empty;
+
+        if (!string.IsNullOrEmpty(message.EncryptedValue))
+            value = _encryptionService.Decrypt(message.EncryptedValue!);
+
+        var settingItem = new SettingItem
+        {
+            Name = message.CurrentName,
+            Value = value,
+            ValueType = message.ValueType
+        };
+
+        _cacheService.HandleUpdate(message.ChangeType, settingItem, message.OldSettingName);
     }
 }

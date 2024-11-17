@@ -12,14 +12,17 @@ namespace SettingService.WebApi.Controllers;
 public class SettingController : ControllerBase
 {
     private readonly ISettingsService _settingsService;
+    private readonly IEncryptionService _encryptionService;
 
     /// <summary>
     /// Конструктор.
     /// </summary>
     /// <param name="settingsService"></param>
-    public SettingController(ISettingsService settingsService)
+    /// <param name="encryptionService"></param>
+    public SettingController(ISettingsService settingsService, IEncryptionService encryptionService)
     {
         _settingsService = settingsService;
+        _encryptionService = encryptionService;
     }
 
     /// <summary>
@@ -55,5 +58,14 @@ public class SettingController : ControllerBase
             return result.Entity!;
 
         throw new Exception($"Ошибка в работе приложения SettingService. Error: {result.Message}");
+    }
+
+    /// <summary>
+    /// Получения приватного ключа для дешифровки значения настройки, полученной через RabbitMQ
+    /// </summary>
+    /// <returns></returns>
+    public string GetKey()
+    {
+        return _encryptionService.GetKey();
     }
 }

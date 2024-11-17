@@ -2,6 +2,7 @@
 using SettingService.ApiClient.Contracts;
 using SettingService.ApiClient.Interfaces;
 using SettingService.ApiClient.Services;
+using SettingService.Cache;
 
 namespace SettingService.ApiClient.DI;
 
@@ -9,6 +10,10 @@ public static class ServiceCollectionExtension
 {
     public static IServiceCollection AddSettingServiceClient(this IServiceCollection services)
     {
+        services.AddCache();
+
+        services.AddSingleton<IEncryptionService, EncryptionService>();
+
         services.AddHttpClient<IWebApiClient, WebApiClient>(client =>
         {
             //client.DefaultRequestHeaders.Authorization

@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SettingService.Cache\SettingService.Cache.csproj" />
     <ProjectReference Include="..\SettingService.DataLayer\SettingService.DataLayer.csproj" />
     <ProjectReference Include="..\SettingService.FrontModels\SettingService.FrontModels.csproj" />
   </ItemGroup>

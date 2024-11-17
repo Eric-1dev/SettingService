@@ -13,6 +13,4 @@ public interface ISettingsService
     Task<OperationResult<SettingItem>> GetByName(string applicationName, string settingName, CancellationToken cancellationToken);
 
     Task<SettingItem> GetSettingItemFromDao(Setting setting);
-    
-    Task HandleRabbitMessage(RabbitMessage message);
 }

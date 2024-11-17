@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SettingService.Cache;
 using SettingService.Contracts;
 using SettingService.DataLayer;
 using SettingService.DataModel;
@@ -17,19 +18,16 @@ internal class SettingsService : ISettingsService
     private readonly ILogger _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly ICacheService _cacheService;
-    private readonly IEncryptionService _encryptionService;
 
     public SettingsService(IDbContextFactory<SettingsContext> dbContextFactory,
         ILogger<SettingsUIService> logger,
         IServiceProvider serviceProvider,
-        ICacheService cacheService,
-        IEncryptionService encryptionService)
+        ICacheService cacheService)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
         _serviceProvider = serviceProvider;
         _cacheService = cacheService;
-        _encryptionService = encryptionService;
     }
 
     public async Task InitializeCache(CancellationToken cancellationToken)
@@ -38,12 +36,16 @@ internal class SettingsService : ISettingsService
 
         var settings = await dbContext.Settings.ToArrayAsync(cancellationToken);
 
+        var settingItems = new List<SettingItem>();
+
         foreach (var setting in settings)
         {
             var settingItem = await GetSettingItemFromDao(setting);
 
-            _cacheService.Add(settingItem);
+            settingItems.Add(settingItem);
         }
+
+        _cacheService.Initialize(settingItems);
     }
 
     public async Task<OperationResult<IReadOnlyCollection<SettingItem>>> GetAll(string applicationName, CancellationToken cancellationToken)
@@ -132,40 +134,5 @@ internal class SettingsService : ISettingsService
         var value = await service.GetSettingValueAsync(path!, key);
 
         return value;
-    }
-
-    public Task HandleRabbitMessage(RabbitMessage message)
-    {
-        const string template = "Получено обновление настройки {settingName}. Тип обновления: {changeType}";
-        _logger.LogInformation(template, message.OldSettingName ?? message.CurrentName, message.ChangeTypeEnum);
-
-        var decryptedValue = string.Empty;
-
-        if (!string.IsNullOrEmpty(message.EncryptedValue))
-            decryptedValue = _encryptionService.Decrypt(message.EncryptedValue!);
-
-        var settingItem = new SettingItem
-        {
-            Name = message.CurrentName,
-            Value = decryptedValue,
-            ValueType = message.ValueType
-        };
-
-        switch (message.ChangeTypeEnum)
-        {
-            case SettingChangeTypeEnum.Added:
-                _cacheService.Add(settingItem);
-                break;
-            case SettingChangeTypeEnum.Removed:
-                _cacheService.Remove(settingItem.Name!);
-                break;
-            case SettingChangeTypeEnum.Changed:
-                var settingName = message.OldSettingName ?? settingItem.Name!;
-                _cacheService.Remove(settingName);
-                _cacheService.Add(settingItem);
-                break;
-        }
-
-        return Task.CompletedTask;
     }
 }

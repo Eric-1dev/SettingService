@@ -7,6 +7,4 @@ public interface IRabbitIntegrationService
     Task Initialize();
     
     Task PublishChange(SettingItem settingItem, string[] applicationNames, SettingChangeTypeEnum changeType, string? oldName);
-
-    void Consume(Func<RabbitMessage, Task> onMessage);
 }

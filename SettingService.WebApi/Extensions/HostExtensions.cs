@@ -21,8 +21,6 @@ public static class HostExtensions
                 {
                     await rabbitIntegrationService.Initialize();
 
-                    rabbitIntegrationService.Consume(settingService.HandleRabbitMessage);
-
                     isInitialized = true;
                 }
                 catch

@@ -2,7 +2,7 @@
 
 public class RabbitMessage
 {
-    public SettingChangeTypeEnum ChangeTypeEnum { get; set; }
+    public SettingChangeTypeEnum ChangeType { get; set; }
     
     public string? OldSettingName { get; set; }
 

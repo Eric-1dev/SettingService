@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using SettingService.Cache;
 using SettingService.Services.Implementation;
 using SettingService.Services.Implementation.ExternalSource;
 using SettingService.Services.Implementation.UI;
@@ -12,7 +13,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddCommonServices(this IServiceCollection services)
     {
-        services.AddSingleton<ICacheService, CacheService>();
+        services.AddCache();
         services.AddSingleton<IEncryptionService, EncryptionService>();
 
         services.AddScoped<IApplicationsUIService, ApplicationsUIService>();

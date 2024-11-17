@@ -11,6 +11,7 @@ internal sealed class WebApiClient : IWebApiClient
 {
     const string GetAllUrl = "api/Setting/GetAll";
     const string GetByNameUrl = "api/Setting/GetByName";
+    const string GetPrivateKeyUrl = "api/Setting/GetKey";
 
     private readonly HttpClient _client;
 
@@ -30,7 +31,7 @@ internal sealed class WebApiClient : IWebApiClient
         var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.GetAsync(requestUrl, cancellationToken);
+        var response = await _client.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
             return [];
@@ -54,7 +55,7 @@ internal sealed class WebApiClient : IWebApiClient
         var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _client.GetAsync(requestUrl, cancellationToken);
+        var response = await _client.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
             return null;
@@ -64,6 +65,23 @@ internal sealed class WebApiClient : IWebApiClient
         var settings = JsonSerializer.Deserialize<SettingItem>(content);
 
         return settings;
+    }
+
+    public async Task<string> GetPrivateKey(CancellationToken cancellationToken)
+    {
+        var token = GetToken();
+
+        var request = new HttpRequestMessage(HttpMethod.Get, GetPrivateKeyUrl);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+            return null!;
+
+        var privateKey = await response.Content.ReadAsStringAsync();
+
+        return privateKey;
     }
 
     private string GetToken()
